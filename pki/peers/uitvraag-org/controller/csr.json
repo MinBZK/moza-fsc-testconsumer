@@ -1,0 +1,20 @@
+{
+  "CN": "controller.uitvraag-org.fsc-test.local",
+  "key": {
+    "algo": "rsa",
+    "size": 4096
+  },
+  "hosts": [
+    "controller.uitvraag-org.fsc-test.local",
+    "uvrctl-test-__ZAD_PROJECT__.rig.prd1.gn2.quattro.rijksapps.nl",
+    "test-uvrctl",
+    "test-uvrctl.rig-prd-__ZAD_PROJECT__.svc.cluster.local"
+  ],
+  "serialnumber": "00000000000000000020",
+  "names": [
+    {
+      "O": "uitvraag-org",
+      "C": "NL"
+    }
+  ]
+}
