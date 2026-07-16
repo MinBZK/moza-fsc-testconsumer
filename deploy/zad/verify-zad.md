@@ -9,7 +9,8 @@
    elk met zijn `ports`-array (uvrmgr `8443,9443,9444`; uvrctl `8080,9443,9444`; uvrout/uvrtxlog
    `8443`) zodat de interne mTLS-poorten een cluster-Service (`test-<comp>:<poort>`) krijgen.
 2. Cert-attachments gemount (zie `cert-manifest.md`) + "Publicatie op het web"
-   (passthrough-TLS, modus 2) op uvrmgr/uvrout ingesteld in de ZAD-UI.
+   (passthrough-TLS, modus 2) op uvrmgr ingesteld in de ZAD-UI (de outway uvrout is
+   egress-only — geen web-publicatie/inbound ingress).
 3. Componenten herstart en boot-logs foutloos (zie `cert-manifest.md`, laatste sectie) — in het
    bijzonder GEEN `x509: certificate signed by unknown authority` meer op de controller: die
    bereikt de manager nu intern op `test-uvrmgr:9443` (interne-PKI) i.p.v. de `:443`-group-ingress.

@@ -280,7 +280,7 @@ if [ "${MODE}" = plan ]; then
   echo "### component uvrctl (controller -> uvrpg schema '${CTL_SCHEMA:-public}')"; echo "${UVRCTL_BODY}"
   echo "### component uvrout (outway)"; echo "${UVROUT_BODY}"
   echo "### component uvrtxlog (txlog-api -> uvrpg schema '${TXLOG_SCHEMA:-public}')"; echo "${UVRTXLOG_BODY}"
-  echo "Extern (mesh, :443): uvrmgr=${UVRMGR_HOST_DISPLAY} uvrout=${UVROUT_HOST_DISPLAY}"
+  echo "Extern (mesh, :443): uvrmgr=${UVRMGR_HOST_DISPLAY}  (uvrout=${UVROUT_HOST_DISPLAY} is egress-only — geen mesh-ingress)"
   echo "Intern (cluster-Service-DNS): ${UVRMGR_SVC}:9443/:9444  ${UVRCTL_SVC}:9443/:9444  ${UVRTXLOG_SVC}:8443  db=${UVRPG_SVC}:5432  (uvrctl-UI: ${UVRCTL_HOST_DISPLAY}:443)"
   echo "Directory-manager (repo A, extern): ${DIRECTORY_MANAGER_HOST}"
   exit 0
@@ -366,7 +366,7 @@ fi
 
 echo "Klaar. Nog handmatig (UI):"
 echo "  - uvrpg: init-script als bijlage op /docker-entrypoint-initdb.d/10-schemas.sql (zie postgres-init.sql)."
-echo "  - FSC-componenten: cert-bijlagen op /etc/fsc/... + Publicatie op het web modus 2 op uvrmgr/uvrout."
+echo "  - FSC-componenten: cert-bijlagen op /etc/fsc/... + Publicatie op het web modus 2 op uvrmgr (mesh :443; de outway uvrout is egress-only — geen web-publicatie/inbound ingress)."
 echo "  - DB-migraties: manager/controller/txlog migreren automatisch bij boot via hun migrate-wrapper-image (geen handmatige stap)."
-echo "Extern (mesh, :443): uvrmgr=${UVRMGR_HOST_DISPLAY} uvrout=${UVROUT_HOST_DISPLAY}"
+echo "Extern (mesh, :443): uvrmgr=${UVRMGR_HOST_DISPLAY}  (uvrout=${UVROUT_HOST_DISPLAY} is egress-only — geen mesh-ingress)"
 echo "Intern (cluster-Service-DNS): ${UVRMGR_SVC}:9443/:9444  ${UVRCTL_SVC}:9443/:9444  ${UVRTXLOG_SVC}:8443  db=${UVRPG_SVC}:5432"

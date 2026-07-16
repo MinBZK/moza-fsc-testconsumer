@@ -62,8 +62,11 @@ jobs:
         run: ./deploy/zad/upsert-peer.sh plan "${DEPLOYMENT}" "${IMAGE_TAG}"
 
       # main: `apply`. Alleen hier zijn de secrets beschikbaar — de branch is vertrouwd (gemerged).
+      # Guard op de project-var: zolang het ZAD-project + `ZAD_API_KEY_FSCUITVRAAG`-secret nog
+      # placeholders zijn (peer niet geprovisioned), blijft main groen; zodra de var
+      # `ZAD_PROJECT_ID_UITVRAAG` gezet is, activeert de apply-stap vanzelf.
       - name: Apply uitvraag-org-peer via ZAD v2-API (main)
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'push' && vars.ZAD_PROJECT_ID_UITVRAAG != '' }}
         env:
           # Eigen project => eigen API-key.
           ZAD_API_KEY: ${{ secrets.ZAD_API_KEY_FSCUITVRAAG }}
