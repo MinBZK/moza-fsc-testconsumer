@@ -1,0 +1,107 @@
+# Directe ZAD-API-deploy van de consumer-peer uitvraag-org (#781) via de v2 Operations Manager
+# API. Roept deploy/zad/upsert-peer.sh aan (zelfde bron als de CLI). Model op repo A's
+# zad-deploy-directory.yml (MinBZK/moza-fsc-testnet) en op org-a's zad-deploy-peer.yml, maar
+# zonder build-job: de vier images (manager-migrate, controller-migrate, outway, txlog-migrate)
+# zijn kant-en-klare pins — deze repo bouwt ze niet zelf.
+#
+# CLOBBER-VEILIG via PROJECT-ISOLATIE: de peer draait in een EIGEN ZAD-project (placeholder
+# __ZAD_PROJECT__, later ingevuld via vars.ZAD_PROJECT_ID_UITVRAAG). De consumer publiceert geen
+# dienst en heeft geen upstream-app, dus geen ander project om mee te clobberen. Binnen dat project
+# draait de peer in de deployment `test` -> één aanmelding van de federatie-OIN (singleton), geen
+# dubbele-OIN-botsing. De echte `apply` draait bovendien alleen op main; PR's plannen slechts (zie
+# de trigger-noot onder).
+#
+# Trigger: elke push naar main => `apply` (deployment `test`). Elke PR-synchronisatie => alleen
+# `plan` (jq-only, geen netwerk, GEEN secrets) -> een PR die dit deploy-script wijzigt kan de
+# ZAD-sleutels niet exfiltreren, want `apply` (met secrets) draait uitsluitend op de vertrouwde
+# main-branch. (Wil je smaller: voeg een `paths:`-filter toe op pki/** + deploy/** + deze workflow.)
+#
+# Dekt alleen de deploy-API (deployment + componenten + images + env_vars/aliases). NIET via de
+# API (UI-only): bijlagen (cert-mount), "Publicatie op het web" (passthrough-TLS) — zie
+# deploy/zad/cert-manifest.md.
+name: zad-deploy-peer
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions: read-all
+
+concurrency:
+  # Eén vaste peer-deployment -> serialiseer alle runs erop (een halve ZAD-deploy laat een
+  # inconsistente staat achter; niet halverwege killen).
+  group: zad-deploy-peer
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      DEPLOYMENT: test
+      PROJECT: ${{ vars.ZAD_PROJECT_ID_UITVRAAG || '__ZAD_PROJECT__' }}
+      BASE_DOMAIN: ${{ vars.ZAD_BASE_DOMAIN || 'rig.prd1.gn2.quattro.rijksapps.nl' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      # PR: alleen `plan` (jq-only, geen netwerk). GEEN ZAD-secrets in de env, zodat een
+      # PR-geauthorde wijziging aan upsert-peer.sh de sleutels niet kan uitlezen/exfiltreren.
+      - name: Plan uitvraag-org-peer (PR, geen secrets)
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          ZAD_PROJECT: ${{ env.PROJECT }}
+          ZAD_BASE_DOMAIN: ${{ env.BASE_DOMAIN }}
+          IMAGE_TAG: v1.43.7
+        run: ./deploy/zad/upsert-peer.sh plan "${DEPLOYMENT}" "${IMAGE_TAG}"
+
+      # main: `apply`. Alleen hier zijn de secrets beschikbaar — de branch is vertrouwd (gemerged).
+      - name: Apply uitvraag-org-peer via ZAD v2-API (main)
+        if: ${{ github.event_name == 'push' }}
+        env:
+          # Eigen project => eigen API-key.
+          ZAD_API_KEY: ${{ secrets.ZAD_API_KEY_FSCUITVRAAG }}
+          # Self-hosted uvrpg-Postgres: verplicht bij apply. Een bestaande secret wordt NIET vanzelf
+          # een env-var — expliciet doorgeven, anders faalt upsert-peer.sh op de :? -check.
+          ZAD_PG_PASSWORD: ${{ secrets.ZAD_PG_PASSWORD }}
+          ZAD_PROJECT: ${{ env.PROJECT }}
+          ZAD_BASE_DOMAIN: ${{ env.BASE_DOMAIN }}
+          IMAGE_TAG: v1.43.7
+        run: ./deploy/zad/upsert-peer.sh apply "${DEPLOYMENT}" "${IMAGE_TAG}"
+
+      - name: Peer-hostnamen als PR-comment
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          marker="<!-- fsc-peer-deploy -->"
+          mgr="https://uvrmgr-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
+          ctl="https://uvrctl-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
+          outway="https://uvrout-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
+          txlog="https://uvrtxlog-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
+          body="${marker}
+          ### FSC uitvraag-org-peer (deployment \`${DEPLOYMENT}\`)
+          - uvrmgr (manager): ${mgr}
+          - uvrctl (controller): ${ctl}
+          - uvrout (outway): ${outway}
+          - uvrtxlog (txlog): ${txlog}
+
+          Eigen \`${DEPLOYMENT}\`-deployment, los van de app-deployments \`test\`/\`pr-<n>\` (clobber-veilig).
+          Nog handmatig/apart: bijlagen (certs) + 'Publicatie op het web' (UI-only) — zie
+          \`deploy/zad/cert-manifest.md\` en \`verify-zad.md\`."
+          id=$(gh api --paginate "repos/$REPO/issues/$PR/comments" \
+                --jq "map(select(.body | startswith(\"$marker\"))) | .[0].id // empty")
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$id" -f body="$body" >/dev/null
+          else
+            gh api -X POST "repos/$REPO/issues/$PR/comments" -f body="$body" >/dev/null
+          fi
