@@ -1,0 +1,329 @@
+# Lokale FSC-harness: directory + consumer-peer uitvraag-org (manager/outway/controller/txlog)
+# + SNI-router. Bewijst announce zonder productie-infra. Zie README.md voor het cert-contract
+# en de boot-stappen (vereist Docker + gegenereerde certs via `pki/issue.sh`).
+x-manager-image: &manager-image docker.io/federatedserviceconnectivity/manager:${IMAGE_TAG:-v1.43.7}
+x-manager-common-env: &manager-common-env
+  LOG_TYPE: local
+  LOG_LEVEL: debug
+  GROUP_ID: moza-fbs-test
+  DIRECTORY_PEER_ID: "00000000000000000010"
+  DIRECTORY_MANAGER_ADDRESS: https://directory.fsc-test.local:443
+  AUDITLOG_TYPE: stdout
+  DISABLE_CRL_CHECKS: "true"            # lokaal geen CRL-distributiepunt (zie README)
+  TLS_GROUP_ROOT_CERT: /pki/ca/root.pem
+
+# Gedeelde txlog-api-env (image `txlog-api`; eigen DB per peer). txlog spreekt mTLS op de
+# INTERNAL PKI (niet de group): outway/manager presenteren hun internal-cert; txlog trust de
+# per-peer internal-CA. Geen GROUP_ID (group-agnostische opslag).
+x-txlog-common-env: &txlog-common-env
+  LOG_TYPE: local
+  LOG_LEVEL: debug
+  LISTEN_ADDRESS: 0.0.0.0:9443
+  MONITORING_ADDRESS: 0.0.0.0:8081
+  # Zowel de losse POSTGRES_*-vars als de samengestelde STORAGE_POSTGRES_DSN zetten (de chart doet
+  # beide) — zo migreert/serveert txlog ongeacht welke vorm het image leest. DATABASE + DSN per peer.
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+  PGSSLMODE: disable
+  PGCONNECT_TIMEOUT: "10"
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      start_period: 20s     # faal-checks tellen niet mee tijdens boot
+      interval: 10s         # steady-state niet eeuwig op 3s pollen
+      timeout: 3s
+      retries: 5
+
+  router:
+    image: haproxy:2.9
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    networks:
+      default:
+        aliases:
+          - directory.fsc-test.local
+          - uitvraag-org.fsc-test.local
+    depends_on:
+      manager-directory:
+        condition: service_started
+
+  manager-directory:
+    # ZAD-artefact: wrapper-image (migrate->serve in de entrypoint). Repo A bouwt dit lokaal uit
+    # een build-context die in deze repo niet bestaat; hier daarom het kant-en-klare ghcr-image.
+    image: ghcr.io/minbzk/moza-fsc-testnet/manager-migrate:${IMAGE_TAG:-v1.43.7}
+    restart: on-failure   # migreert bij boot; herstart bij transiënte DB-race (parity met siblings)
+    # Draai als de host-UID/GID zodat de pod de 0600-privékeys leest (matching owner)
+    # i.p.v. ze open te zetten. HOST_UID/HOST_GID uit .env (zie README, stap 3).
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    environment:
+      <<: *manager-common-env
+      SELF_ADDRESS: https://directory.fsc-test.local:443
+      TX_LOG_API_ADDRESS: ""                 # directory-mode: geen txlog
+      AUTO_SIGN_GRANTS: servicePublication,delegatedServicePublication
+      LISTEN_ADDRESS_EXTERNAL: 0.0.0.0:8443
+      LISTEN_ADDRESS_INTERNAL: 0.0.0.0:9443
+      LISTEN_ADDRESS_INTERNAL_UNAUTHENTICATED: 0.0.0.0:9444
+      MONITORING_ADDRESS: 0.0.0.0:8080
+      STORAGE_POSTGRES_DSN: postgres://postgres:postgres@postgres:5432/fsc_directory?sslmode=disable
+      TLS_GROUP_CERT: &dir-grp /pki/out/directory/directory/cert.pem
+      TLS_GROUP_KEY: &dir-grp-key /pki/out/directory/directory/key.pem
+      TLS_GROUP_TOKEN_CERT: *dir-grp
+      TLS_GROUP_TOKEN_KEY: *dir-grp-key
+      TLS_GROUP_CONTRACT_CERT: *dir-grp
+      TLS_GROUP_CONTRACT_KEY: *dir-grp-key
+      TLS_ROOT_CERT: &dir-introot /pki/internal/directory/ca/root.pem
+      TLS_CERT: &dir-int /pki/internal/directory/directory/cert.pem
+      TLS_KEY: &dir-int-key /pki/internal/directory/directory/key.pem
+      TLS_INTERNAL_UNAUTHENTICATED_ROOT_CERT: *dir-introot
+      TLS_INTERNAL_UNAUTHENTICATED_CERT: *dir-int
+      TLS_INTERNAL_UNAUTHENTICATED_KEY: *dir-int-key
+    volumes:
+      - "${PKI_DIR:?zet PKI_DIR in .env}:/pki:ro"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  migrate-uitvraag-org:
+    image: *manager-image
+    command:
+      - /usr/local/bin/manager
+      - migrate
+      - up
+      - --postgres-dsn
+      - postgres://postgres:postgres@postgres:5432/fsc_uitvraag_org?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: on-failure
+
+  manager-uitvraag-org:
+    image: *manager-image
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"   # host-UID -> leest 0600-keys (zie manager-directory)
+    command:
+      - /usr/local/bin/manager
+      - serve
+    environment:
+      <<: *manager-common-env
+      SELF_ADDRESS: https://uitvraag-org.fsc-test.local:443
+      # De manager bevraagt bij token-uitgifte de eigen controller naar de dienst
+      # (/v1/groups/{group}/services/{service}); zonder dit adres faalt /token met "unsupported
+      # protocol scheme". Registratie-API :9443, manager presenteert zijn internal-cert.
+      CONTROLLER_REGISTRATION_API_ADDRESS: https://controller.uitvraag-org.fsc-test.local:9443
+      # Echte txlog-api (INTERNAL-PKI mTLS). De manager frontet txlog voor tx-log-queries.
+      TX_LOG_API_ADDRESS: https://txlog.uitvraag-org.fsc-test.local:9443
+      LISTEN_ADDRESS_EXTERNAL: 0.0.0.0:8443
+      LISTEN_ADDRESS_INTERNAL: 0.0.0.0:9443
+      LISTEN_ADDRESS_INTERNAL_UNAUTHENTICATED: 0.0.0.0:9444
+      MONITORING_ADDRESS: 0.0.0.0:8080
+      STORAGE_POSTGRES_DSN: postgres://postgres:postgres@postgres:5432/fsc_uitvraag_org?sslmode=disable
+      TLS_GROUP_CERT: &uvr-grp /pki/out/uitvraag-org/manager/cert.pem
+      TLS_GROUP_KEY: &uvr-grp-key /pki/out/uitvraag-org/manager/key.pem
+      TLS_GROUP_TOKEN_CERT: *uvr-grp
+      TLS_GROUP_TOKEN_KEY: *uvr-grp-key
+      TLS_GROUP_CONTRACT_CERT: *uvr-grp
+      TLS_GROUP_CONTRACT_KEY: *uvr-grp-key
+      TLS_ROOT_CERT: &uvr-introot /pki/internal/uitvraag-org/ca/root.pem
+      TLS_CERT: &uvr-int /pki/internal/uitvraag-org/manager/cert.pem
+      TLS_KEY: &uvr-int-key /pki/internal/uitvraag-org/manager/key.pem
+      TLS_INTERNAL_UNAUTHENTICATED_ROOT_CERT: *uvr-introot
+      TLS_INTERNAL_UNAUTHENTICATED_CERT: *uvr-int
+      TLS_INTERNAL_UNAUTHENTICATED_KEY: *uvr-int-key
+    volumes:
+      - "${PKI_DIR:?zet PKI_DIR in .env}:/pki:ro"
+    networks:
+      default:
+        # Alias = de internal-cert-hostnaam, zodat de controller TLS naar :9443 valideert.
+        aliases:
+          - manager.uitvraag-org.fsc-test.local
+    depends_on:
+      migrate-uitvraag-org:
+        condition: service_completed_successfully
+      manager-directory:
+        condition: service_started
+
+  outway-uitvraag-org:
+    image: docker.io/federatedserviceconnectivity/outway:${IMAGE_TAG:-v1.43.7}
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"   # host-UID -> leest 0600-keys
+    restart: on-failure                            # boot-race met de eigen manager
+    command:
+      - /usr/local/bin/outway
+      - serve
+    environment:
+      LOG_TYPE: local
+      LOG_LEVEL: debug
+      GROUP_ID: moza-fbs-test
+      NAME: uitvraag-org-outway
+      SELF_ADDRESS: https://outway.uitvraag-org.fsc-test.local:443
+      LISTEN_ADDRESS: 0.0.0.0:8443
+      MONITORING_ADDRESS: 0.0.0.0:8081
+      DISABLE_CRL_CHECKS: "true"
+      # De outway leest z'n contract-/service-config van de eigen manager (internal-unauthenticated):
+      MANAGER_INTERNAL_UNAUTHENTICATED_ADDRESS: https://manager.uitvraag-org.fsc-test.local:9444
+      # Echte txlog-api (INTERNAL-PKI mTLS): bij egress logt de outway de transactie (direction: out).
+      TX_LOG_API_ADDRESS: https://txlog.uitvraag-org.fsc-test.local:9443
+      TLS_ROOT_CERT: /pki/internal/uitvraag-org/ca/root.pem
+      TLS_CERT: /pki/internal/uitvraag-org/outway/cert.pem
+      TLS_KEY: /pki/internal/uitvraag-org/outway/key.pem
+      TLS_GROUP_ROOT_CERT: /pki/ca/root.pem
+      TLS_GROUP_CERT: /pki/out/uitvraag-org/outway/cert.pem
+      TLS_GROUP_KEY: /pki/out/uitvraag-org/outway/key.pem
+    volumes:
+      - "${PKI_DIR:?zet PKI_DIR in .env}:/pki:ro"
+    networks:
+      default:
+        # Alias = de internal-cert-hostnaam; géén :443-router-route (de outway is client, geen ingress).
+        aliases:
+          - outway.uitvraag-org.fsc-test.local
+    depends_on:
+      manager-uitvraag-org:
+        condition: service_started
+      txlog-uitvraag-org:
+        condition: service_started
+
+  toolbox:
+    # Curl-client BINNEN het netwerk voor de mTLS-onboarding-calls (publish-service.sh).
+    # Draait als host-UID zodat het de 0600-internal-key leest.
+    image: docker.io/curlimages/curl:8.11.1
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    entrypoint: ["sleep", "infinity"]
+    volumes:
+      - "${PKI_DIR:?zet PKI_DIR in .env}:/pki:ro"
+    depends_on:
+      manager-uitvraag-org:
+        condition: service_started
+      controller-uitvraag-org:
+        condition: service_started
+
+  directory-ui:
+    image: docker.io/federatedserviceconnectivity/directory-ui:${IMAGE_TAG:-v1.43.7}
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"   # host-UID -> leest 0600-group-key
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      LOG_TYPE: local
+      LOG_LEVEL: info
+      LISTEN_ADDRESS: 0.0.0.0:8080
+      MONITORING_ADDRESS: 0.0.0.0:8081
+      # Externe directory-manager via de SNI-router op :443.
+      DIRECTORY_MANAGER_ADDRESS: https://directory.fsc-test.local:443
+      BASE_URL_PATH: /
+      TLS_GROUP_ROOT_CERT: /pki/ca/root.pem
+      TLS_GROUP_CERT: /pki/out/uitvraag-org/manager/cert.pem   # lezer-peer-identiteit
+      TLS_GROUP_KEY: /pki/out/uitvraag-org/manager/key.pem
+    volumes:
+      - "${PKI_DIR:?zet PKI_DIR in .env}:/pki:ro"
+    depends_on:
+      manager-directory:
+        condition: service_started
+      router:
+        condition: service_started
+
+  migrate-controller-uitvraag-org:
+    image: docker.io/federatedserviceconnectivity/controller:${IMAGE_TAG:-v1.43.7}
+    command:
+      - /usr/local/bin/controller
+      - migrate
+      - up
+      - --postgres-dsn
+      - postgres://postgres:postgres@postgres:5432/fsc_controller_uitvraag_org?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: on-failure
+
+  controller-uitvraag-org:
+    image: docker.io/federatedserviceconnectivity/controller:${IMAGE_TAG:-v1.43.7}
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"   # host-UID -> leest 0600-internal-key
+    restart: on-failure                           # herstart bij transiënte boot-fout (DB/manager nog niet klaar)
+    ports:
+      - "127.0.0.1:8090:8080"
+    environment:
+      LOG_TYPE: local
+      LOG_LEVEL: info
+      LISTEN_ADDRESS_UI: 0.0.0.0:8080
+      LISTEN_ADDRESS_REGISTRATION_API: 0.0.0.0:9443
+      LISTEN_ADDRESS_ADMINISTRATION_API: 0.0.0.0:9444
+      MONITORING_ADDRESS: 0.0.0.0:8081
+      MANAGER_ADDRESS_INTERNAL: https://manager.uitvraag-org.fsc-test.local:9443   # = internal-cert-SAN
+      GROUP_ID: moza-fbs-test
+      DIRECTORY_PEER_ID: "00000000000000000010"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DATABASE: fsc_controller_uitvraag_org
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      PGSSLMODE: disable
+      STORAGE_POSTGRES_DSN: postgres://postgres:postgres@postgres:5432/fsc_controller_uitvraag_org?sslmode=disable
+      # Lokaal ZONDER login (AUTHN_TYPE=none — een door OpenFSC ondersteunde modus). De
+      # controller-management (dienst publiceren, grant->sign->accept) werkt zonder loginscherm;
+      # OIDC is enkel de auth-laag ervoor en buiten scope van deze harness (geen afnemer-login hier).
+      AUTHN_TYPE: none
+      AUTHZ_TYPE: rbac
+      CSRF_PROTECTION_ENABLED: "false"
+      AUDITLOG_TYPE: stdout
+      TLS_ROOT_CERT: /pki/internal/uitvraag-org/ca/root.pem
+      TLS_CERT: /pki/internal/uitvraag-org/controller/cert.pem
+      TLS_KEY: /pki/internal/uitvraag-org/controller/key.pem
+    volumes:
+      - "${PKI_DIR:?zet PKI_DIR in .env}:/pki:ro"
+    networks:
+      default:
+        aliases:
+          - controller.uitvraag-org.fsc-test.local
+    depends_on:
+      migrate-controller-uitvraag-org:
+        condition: service_completed_successfully
+      manager-uitvraag-org:
+        condition: service_started
+
+  # ---- transaction-log API (per peer) ----------------------------------------------------------
+  migrate-txlog-uitvraag-org:
+    image: docker.io/federatedserviceconnectivity/txlog-api:${IMAGE_TAG:-v1.43.7}
+    # `migrate up` leest de DSN ALLEEN uit --postgres-dsn (niet uit env, anders dan serve) — net als
+    # de manager/controller-migrates. Zonder de vlag verbindt migrate met een default en hangt 't.
+    command: [/usr/local/bin/txlog-api, migrate, up, --postgres-dsn,
+              "postgres://postgres:postgres@postgres:5432/fsc_txlog_uitvraag_org?sslmode=disable"]
+    environment:
+      <<: *txlog-common-env
+      POSTGRES_DATABASE: fsc_txlog_uitvraag_org
+      STORAGE_POSTGRES_DSN: postgres://postgres:postgres@postgres:5432/fsc_txlog_uitvraag_org?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: on-failure
+
+  txlog-uitvraag-org:
+    image: docker.io/federatedserviceconnectivity/txlog-api:${IMAGE_TAG:-v1.43.7}
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"   # host-UID -> leest de 0600-internal-key
+    command: [/usr/local/bin/txlog-api, serve]
+    restart: on-failure                            # boot-race met postgres/migrate
+    environment:
+      <<: *txlog-common-env
+      POSTGRES_DATABASE: fsc_txlog_uitvraag_org
+      STORAGE_POSTGRES_DSN: postgres://postgres:postgres@postgres:5432/fsc_txlog_uitvraag_org?sslmode=disable
+      TLS_ROOT_CERT: /pki/internal/uitvraag-org/ca/root.pem
+      TLS_CERT: /pki/internal/uitvraag-org/txlog/cert.pem
+      TLS_KEY: /pki/internal/uitvraag-org/txlog/key.pem
+    volumes:
+      - "${PKI_DIR:?zet PKI_DIR in .env}:/pki:ro"
+    networks:
+      default:
+        aliases:
+          - txlog.uitvraag-org.fsc-test.local
+    depends_on:
+      migrate-txlog-uitvraag-org:
+        condition: service_completed_successfully
+
+networks:
+  default:
+    driver: bridge
