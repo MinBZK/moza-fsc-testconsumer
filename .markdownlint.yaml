@@ -1,0 +1,12 @@
+# markdownlint-cli2 config. https://github.com/DavidAnson/markdownlint
+default: true
+# MD013 (line length) uit: onze docs bevatten lange URLs en tabellen.
+MD013: false
+# MD033 (inline HTML) toestaan: enkele <!-- --> en details/summary in templates.
+MD033: false
+# MD041 (first line heading) uit: commentaarblokken bovenaan templates.
+MD041: false
+# MD060 (table-column-style) uit: onze tabellen mengen padding-stijlen (gepadde
+# data-rijen, compacte delimiter-rij `|---|`) die MD060's `any`-modus niet als
+# consistent accepteert. Puur cosmetisch; structurele tabelfouten blijven gemeld.
+MD060: false

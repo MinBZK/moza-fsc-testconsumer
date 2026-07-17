@@ -1,0 +1,15 @@
+# FSC-peer certificaten (privésleutels — NOOIT committen)
+pki/ca/
+pki/out/
+pki/internal/
+pki/zad-upload/
+
+# Lokale dev-omgeving
+deploy/local/.env
+
+# IDE
+.idea/
+
+# Diversen
+*.log
+.DS_Store

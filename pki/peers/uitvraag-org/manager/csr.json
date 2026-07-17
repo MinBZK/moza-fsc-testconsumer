@@ -1,0 +1,21 @@
+{
+  "CN": "manager.uitvraag-org.fsc-test.local",
+  "key": {
+    "algo": "rsa",
+    "size": 4096
+  },
+  "hosts": [
+    "uitvraag-org.fsc-test.local",
+    "manager.uitvraag-org.fsc-test.local",
+    "uvrmgr-test-mpfuc-84g.rig.prd1.gn2.quattro.rijksapps.nl",
+    "test-uvrmgr",
+    "test-uvrmgr.rig-prd-mpfuc-84g.svc.cluster.local"
+  ],
+  "serialnumber": "00000000000000000020",
+  "names": [
+    {
+      "O": "uitvraag-org",
+      "C": "NL"
+    }
+  ]
+}
