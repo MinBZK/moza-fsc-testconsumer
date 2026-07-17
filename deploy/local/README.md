@@ -11,7 +11,9 @@ OIDC-login-voorziening — control-plane-only voor deze ene consumer-peer. Bouwt
 
 ## Benodigdheden
 
-- **Docker** + `docker compose` (v2).
+- **Docker** + `docker compose` (v2). De eerste `up` bouwt de `manager-migrate`-wrapper lokaal
+  uit `deploy/zad/manager-migrate` (FROM de stock multi-arch manager-image) — dus geen
+  amd64-only ghcr-image; werkt ook op Apple Silicon.
 - Gegenereerde certs uit `pki/` — draai daar eerst `./init-ca.sh`, `./issue.sh` en
   `./verify.sh` (zie `pki/README.md`, sectie "Uitvoeren"). Zonder certs faalt elke
   container die `/pki` mount bij boot (ontbrekend bestand).

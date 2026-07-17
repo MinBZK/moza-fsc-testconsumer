@@ -58,9 +58,15 @@ services:
         condition: service_started
 
   manager-directory:
-    # ZAD-artefact: wrapper-image (migrate->serve in de entrypoint). Repo A bouwt dit lokaal uit
-    # een build-context die in deze repo niet bestaat; hier daarom het kant-en-klare ghcr-image.
-    image: ghcr.io/minbzk/moza-fsc-testnet/manager-migrate:${IMAGE_TAG:-v1.43.7}
+    # ZAD-artefact: wrapper-image (migrate->serve in de entrypoint). Compose bouwt 'm lokaal uit
+    # deploy/zad/manager-migrate (FROM de stock multi-arch manager-image) zodat het óók op Apple
+    # Silicon draait — de ghcr-migrate-images zijn amd64-only. De wrapper migreert fsc_directory
+    # bij boot, dus een losse migrate-directory-service is overbodig.
+    build:
+      context: ../../deploy/zad/manager-migrate
+      args:
+        IMAGE_TAG: ${IMAGE_TAG:-v1.43.7}
+    image: manager-migrate:${IMAGE_TAG:-v1.43.7}
     restart: on-failure   # migreert bij boot; herstart bij transiënte DB-race (parity met siblings)
     # Draai als de host-UID/GID zodat de pod de 0600-privékeys leest (matching owner)
     # i.p.v. ze open te zetten. HOST_UID/HOST_GID uit .env (zie README, stap 3).
