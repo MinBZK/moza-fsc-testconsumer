@@ -59,7 +59,7 @@ docker compose up -d
 
 ### 3. ZAD
 
-Zie `deploy/zad/README.md`. Kort: eigen ZAD-project (later invullen) + eigen API-key
+Zie `deploy/zad/README.md`. Kort: eigen ZAD-project `mpfuc-84g` (deployment `test`) + eigen API-key
 (secret `ZAD_API_KEY_FSCUITVRAAG`); `upsert-peer.sh` beheert deployment + componenten + images;
 cert-attachments + "Publicatie op het web" zijn UI-only.
 

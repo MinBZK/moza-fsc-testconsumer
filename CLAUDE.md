@@ -40,7 +40,7 @@ contract, trust-anchor, passthrough, SNI, txlog, announce.
 | Group ID | `moza-fbs-test` |
 | Directory-OIN | `00000000000000000010` (draait in repo A) |
 | Endpoints | `manager`, `outway`, `controller`, `txlog` |
-| ZAD-project / deployment | _placeholder_ (later in te vullen) |
+| ZAD-project / deployment | `mpfuc-84g` / `test` |
 
 **Peer ID = geldige OIN** (uit cert `subject.serialNumber`), peer-naam uit `subject.organization`.
 
@@ -50,7 +50,7 @@ contract, trust-anchor, passthrough, SNI, txlog, announce.
   naar fsc-testnet's group-root. Kopieer daarom fsc-testnet's `ca/{root,intermediate}.pem` (+ keys)
   in `pki/ca/` en draai **niet** `init-ca.sh` (dat maakt een verse, vreemde CA — enkel voor de
   geïsoleerde lokale proof). De per-peer INTERNAL-CA blijft wél lokaal/self-signed.
-- **Project-isolatie:** de peer draait in een eigen ZAD-project (_placeholder_) met een eigen
+- **Project-isolatie:** de peer draait in een eigen ZAD-project (`mpfuc-84g`) met een eigen
   API-key (secret `ZAD_API_KEY_FSCUITVRAAG`). De uitvraag-app draait apart en wordt cross-project
   via de ingress-URL bereikt.
 - **Twee cert-ketens per endpoint:** GROUP (extern, mesh) via de group-intermediate; INTERNAL
