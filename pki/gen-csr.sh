@@ -21,19 +21,13 @@ set -euo pipefail
 BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 # --- ZAD-topologie (DEZELFDE env-vars + defaults als deploy/zad/upsert-peer.sh) ---------------------
-PROJECT="${ZAD_PROJECT:-__ZAD_PROJECT__}"
+PROJECT="${ZAD_PROJECT:-mpfuc-84g}"
 DEPLOYMENT="${ZAD_DEPLOYMENT:-test}"                       # upsert-peer.sh neemt dit als arg (default test)
 BASE_DOMAIN="${ZAD_BASE_DOMAIN:-rig.prd1.gn2.quattro.rijksapps.nl}"
 NAMESPACE="${ZAD_NAMESPACE:-rig-prd-${PROJECT}}"          # OpenShift-namespace = rig-prd-<project>
 CLUSTER_DOMAIN="${ZAD_CLUSTER_DOMAIN:-svc.cluster.local}"
 
-# De ongezette placeholder-default (__ZAD_PROJECT__) is expliciet uitgezonderd van de
-# lowercase-validatie hieronder: een template-csr genereren zonder ZAD_PROJECT moet lukken;
-# pas bij een échte generatie (ZAD_PROJECT gezet) geldt de striktere lowercase-eis.
-case "${PROJECT}" in
-  __ZAD_PROJECT__) ;;
-  ""|*[!a-z0-9-]*) echo "ongeldig ZAD_PROJECT: '${PROJECT}'" >&2; exit 1 ;;
-esac
+case "${PROJECT}" in ""|*[!a-z0-9-]*) echo "ongeldig ZAD_PROJECT: '${PROJECT}'" >&2; exit 1 ;; esac
 case "${DEPLOYMENT}" in ""|*[!a-z0-9-]*) echo "ongeldig ZAD_DEPLOYMENT: '${DEPLOYMENT}'" >&2; exit 1 ;; esac
 
 # --- Peer-identiteit (statisch) --------------------------------------------------------------------

@@ -6,9 +6,9 @@
   },
   "hosts": [
     "outway.uitvraag-org.fsc-test.local",
-    "uvrout-test-__ZAD_PROJECT__.rig.prd1.gn2.quattro.rijksapps.nl",
+    "uvrout-test-mpfuc-84g.rig.prd1.gn2.quattro.rijksapps.nl",
     "test-uvrout",
-    "test-uvrout.rig-prd-__ZAD_PROJECT__.svc.cluster.local"
+    "test-uvrout.rig-prd-mpfuc-84g.svc.cluster.local"
   ],
   "serialnumber": "00000000000000000020",
   "names": [

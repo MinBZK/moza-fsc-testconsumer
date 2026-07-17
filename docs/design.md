@@ -36,7 +36,7 @@ gemodelleerd); deze repo bevat **uitsluitend FSC-infra** (PKI + deploy), niet de
 | Directory-OIN | `00000000000000000010` | repo A directory-deploy |
 | Endpoints (PKI) | `manager`, `outway`, `controller`, `txlog` | dit ontwerp |
 | FSC-images (pin) | `v1.43.7` (manager/outway/controller/txlog/directory-ui) | repo A |
-| ZAD-project / deployment | _placeholder_ (later in te vullen) | dit ontwerp |
+| ZAD-project / deployment | `mpfuc-84g` / `test` | dit ontwerp |
 | ZAD-component-prefix | `uvr*` (`uvrmgr`/`uvrout`/`uvrctl`/`uvrtxlog`/`uvrpg`) | dit ontwerp |
 
 **Peer ID = geldige OIN** (uit cert `subject.serialNumber`), peer-naam uit `subject.organization`.
@@ -176,9 +176,10 @@ Deze punten gelden 1:1 (zelfde v2-API, zelfde OpenFSC-images):
 
 ## Open punten (genoteerd, niet-blokkerend)
 
-- **ZAD-project + API-key-secret** worden later ingevuld. Tot dan staan er duidelijke placeholders
-  in `upsert-peer.sh` / de workflow (project + secret-naam). De echte `apply` draait pas als het
-  project bestaat en het secret gezet is; PR-`plan` werkt zonder.
+- **ZAD-project** is `mpfuc-84g` (deployment `test`) — ingebakken als default in `upsert-peer.sh`,
+  `pki/gen-csr.sh` en de workflow (override via `ZAD_PROJECT` / `vars.ZAD_PROJECT_ID_UITVRAAG`). De
+  **API-key-secret** `ZAD_API_KEY_FSCUITVRAAG` + `ZAD_PG_PASSWORD` worden nog gezet; de `apply`-stap
+  slaat zichzelf over (main blijft groen) tot het secret er is. PR-`plan` werkt zonder.
 - **Discover + data-pad** — vervolg (op ZAD, tegen echte directory + magazijn-a).
 - **Contract (ServiceConnectionGrant)** — vervolg (via de manager-API of de controller-UI).
 - **outway-env-namen** — verifiëren tegen de `federatedserviceconnectivity/outway`-image bij de

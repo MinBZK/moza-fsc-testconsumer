@@ -1,7 +1,7 @@
 # ZAD-deploy — consumer-peer uitvraag-org
 
 ZAD-rollout van de FSC-consumer-peer `uitvraag-org` (manager `uvrmgr`, controller `uvrctl`, outway
-`uvrout`, txlog `uvrtxlog`) in een **eigen ZAD-project** (`__ZAD_PROJECT__`, later in te vullen).
+`uvrout`, txlog `uvrtxlog`) in een **eigen ZAD-project** (`mpfuc-84g`, deployment `test`).
 De consumer publiceert geen dienst en heeft geen upstream-app: de outway bereikt de aanbiedende
 peer straks rechtstreeks over de FSC-mesh, niet cross-project. Bouwt voort op `pki/`
 (certs) en `deploy/local/` (lokale compose-proof van dezelfde peer); zie die README's voor het
@@ -48,7 +48,7 @@ cert-contract resp. de lokale smokes.
 | Variabele | Default | Rol |
 |-----------|---------|-----|
 | `ZAD_API_KEY` | — (verplicht bij `apply`) | Auth tegen de ZAD v2-API; **de key van het eigen project**, niet de key van een ander project. **Niet** inline zetten (`export`, niet `ZAD_API_KEY=... ./upsert-peer.sh ...` — dat komt in de shell-history). |
-| `ZAD_PROJECT` | `__ZAD_PROJECT__` | Eigen ZAD-project van de peer (los van het app-project). Bepaalt óók de namespace (`rig-prd-<project>`) in de cert-SAN's — `pki/gen-csr.sh` leest dezelfde var, dus een projectwissel is env-var-only (her-uitgeven + opnieuw uploaden). |
+| `ZAD_PROJECT` | `mpfuc-84g` | Eigen ZAD-project van de peer (los van het app-project). Bepaalt óók de namespace (`rig-prd-<project>`) in de cert-SAN's — `pki/gen-csr.sh` leest dezelfde var, dus een projectwissel is env-var-only (her-uitgeven + opnieuw uploaden). |
 | `ZAD_DEPLOYMENT` | `test` | Default voor het `[deployment]`-argument (het CLI-arg wint). Gedeeld met `pki/gen-csr.sh` zodat cert-SAN's en deploy-adressen sporen. |
 | `ZAD_BASE` | `https://zad.rijksapp.nl` | Basis-URL van de ZAD v2 Operations Manager API. |
 | `ZAD_BASE_DOMAIN` | `rig.prd1.gn2.quattro.rijksapps.nl` | Base-domain voor de per-component mesh-hostnamen. |

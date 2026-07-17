@@ -6,9 +6,9 @@
   },
   "hosts": [
     "txlog.uitvraag-org.fsc-test.local",
-    "uvrtxlog-test-__ZAD_PROJECT__.rig.prd1.gn2.quattro.rijksapps.nl",
+    "uvrtxlog-test-mpfuc-84g.rig.prd1.gn2.quattro.rijksapps.nl",
     "test-uvrtxlog",
-    "test-uvrtxlog.rig-prd-__ZAD_PROJECT__.svc.cluster.local"
+    "test-uvrtxlog.rig-prd-mpfuc-84g.svc.cluster.local"
   ],
   "serialnumber": "00000000000000000020",
   "names": [

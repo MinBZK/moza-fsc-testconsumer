@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Zet de consumer-peer uitvraag-org (manager+controller+outway+txlog) op ZAD via de v2 Operations
-# Manager API in een EIGEN ZAD-project (__ZAD_PROJECT__, later in te vullen). Gebaseerd op
+# Manager API in een EIGEN ZAD-project (mpfuc-84g, deployment `test`). Gebaseerd op
 # moza-fsc-org-a's deploy/zad/upsert-peer.sh (de aanbiedende provider-peer-analoog), zelf gemodelleerd naar
 # repo A's deploy/zad/upsert-directory.sh (MinBZK/moza-fsc-testnet) — zelfde validate/plan/apply-
 # vorm, één bron voor CLI + de workflow zad-deploy-peer.yml.
@@ -38,7 +38,7 @@
 # je de config van een bestaande component, verwijder 'm dan eerst in de UI zodat de volgende apply
 # 'm opnieuw aanmaakt.
 #
-# De deployment is VAST (test/__ZAD_PROJECT__), dus we hebben ZAD's $DEPLOYMENT_NAME-substitutie niet
+# De deployment is VAST (test/mpfuc-84g), dus we hebben ZAD's $DEPLOYMENT_NAME-substitutie niet
 # nodig: bash lost alle inter-component-hostnamen concreet op (UVR*_HOST_DISPLAY) en zet ze in
 # `env_vars`. Zo leunen de adressen niet op aliases-substitutie. Door de self-hosted uvrpg-Postgres
 # is óók de DB-DSN concreet (STORAGE_POSTGRES_DSN in env_vars), dus de aliases zijn leeg.
@@ -48,7 +48,7 @@
 #   ./deploy/zad/upsert-peer.sh validate                       # read-only auth-check
 #   ./deploy/zad/upsert-peer.sh plan   [deployment] [tag]       # toont bodies, muteert niet
 #   ./deploy/zad/upsert-peer.sh apply  [deployment] [tag]       # muteert + pollt tasks
-# Env: ZAD_API_KEY (verplicht bij apply; key van het eigen project), ZAD_PROJECT (__ZAD_PROJECT__),
+# Env: ZAD_API_KEY (verplicht bij apply; key van het eigen project), ZAD_PROJECT (mpfuc-84g),
 #      ZAD_BASE (zad.rijksapp.nl), ZAD_BASE_DOMAIN (rig.prd1...), ZAD_MANAGER_TAG (ghcr manager-tag,
 #      default = tag), ZAD_DIRECTORY_MANAGER_HOST (repo A's directory-manager-host op ZAD),
 #      ZAD_PG_SSLMODE (disable).
@@ -60,7 +60,7 @@ IMAGE_TAG="${3:-v1.43.7}"                        # OpenFSC-versie: outway stock-
 MANAGER_TAG="${ZAD_MANAGER_TAG:-${IMAGE_TAG}}"       # migrate-wrappers (ghcr) mogen een eigen tag hebben
 CONTROLLER_TAG="${ZAD_CONTROLLER_TAG:-${IMAGE_TAG}}"
 TXLOG_TAG="${ZAD_TXLOG_TAG:-${IMAGE_TAG}}"
-PROJECT="${ZAD_PROJECT:-__ZAD_PROJECT__}"
+PROJECT="${ZAD_PROJECT:-mpfuc-84g}"
 BASE="${ZAD_BASE:-https://zad.rijksapp.nl}"
 BASE_DOMAIN="${ZAD_BASE_DOMAIN:-rig.prd1.gn2.quattro.rijksapps.nl}"
 PG_SSLMODE="${ZAD_PG_SSLMODE:-disable}"          # managed DB intra-cluster: plaintext (zoals berichtenbox-JDBC)
@@ -108,7 +108,7 @@ POSTGRES_IMAGE="${ZAD_POSTGRES_IMAGE:-docker.io/library/postgres:17}"   # self-h
 
 # Concrete hostnamen voor déze (vaste) deployment — zowel voor de plan-/apply-output als, direct,
 # voor de inter-component-adressen in de env_vars-blobs. Geen $DEPLOYMENT_NAME-substitutie: de
-# deployment is vast (test/__ZAD_PROJECT__), dus bash lost de hostnaam op en we leunen niet op ZAD's
+# deployment is vast (test/mpfuc-84g), dus bash lost de hostnaam op en we leunen niet op ZAD's
 # aliases-substitutie (die alleen bij component-creatie wordt toegepast, niet bij een re-POST).
 UVRMGR_HOST_DISPLAY="uvrmgr-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
 UVRCTL_HOST_DISPLAY="uvrctl-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"

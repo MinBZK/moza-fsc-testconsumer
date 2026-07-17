@@ -20,7 +20,7 @@ services) maar **geen bijlagen** — net als repo A's directory-deploy
 1. `pki/issue.sh` (vereist `cfssl`) — genereert `pki/out/uitvraag-org/*` (group,
    getekend door fsc-testnet's intermediate) en `pki/internal/uitvraag-org/*` (internal).
    **Let op (multi-poort-fix, 2026-07-13):** de internal-cert-SAN's bevatten nu ook de
-   cluster-interne Service-DNS (`test-<comp>` + `test-<comp>.rig-prd-__ZAD_PROJECT__.svc.cluster.local`),
+   cluster-interne Service-DNS (`test-<comp>` + `test-<comp>.rig-prd-mpfuc-84g.svc.cluster.local`),
    waarnaar het interne mTLS-verkeer verbindt. Draaide je `issue.sh` vóór deze wijziging, geef de
    certs dan opnieuw uit met `issue.sh -f` (anders faalt de hostnaamverificatie op `test-uvrmgr:9443`
    enz.) en upload de verse set opnieuw.
@@ -138,7 +138,7 @@ bestaande component (zie `design.md`). Bestaan de componenten al met de oude (`:
 zijn er twee routes om de nieuwe interne adressen + poorten door te voeren:
 
 - **Poorten los bijwerken via de API** (env blijft ongemoeid): `PATCH
-  /api/v2/projects/__ZAD_PROJECT__/components/<comp>` met body `{"ports":[…]}` (uvrmgr `[8443,9443,9444]`,
+  /api/v2/projects/mpfuc-84g/components/<comp>` met body `{"ports":[…]}` (uvrmgr `[8443,9443,9444]`,
   uvrctl `[8080,9443,9444]`). Zet daarnaast de interne adressen (`MANAGER_ADDRESS_INTERNAL` etc.)
   in de **UI**, want env is UI-beheerd op een bestaande component. Cert-attachments blijven behouden.
 - **Component verwijderen + opnieuw aanmaken** (via `upsert-peer.sh apply`, die env+ports in één

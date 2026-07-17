@@ -6,9 +6,9 @@
   },
   "hosts": [
     "controller.uitvraag-org.fsc-test.local",
-    "uvrctl-test-__ZAD_PROJECT__.rig.prd1.gn2.quattro.rijksapps.nl",
+    "uvrctl-test-mpfuc-84g.rig.prd1.gn2.quattro.rijksapps.nl",
     "test-uvrctl",
-    "test-uvrctl.rig-prd-__ZAD_PROJECT__.svc.cluster.local"
+    "test-uvrctl.rig-prd-mpfuc-84g.svc.cluster.local"
   ],
   "serialnumber": "00000000000000000020",
   "names": [
