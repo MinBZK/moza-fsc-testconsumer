@@ -173,8 +173,11 @@ services:
       LISTEN_ADDRESS: 0.0.0.0:8443
       MONITORING_ADDRESS: 0.0.0.0:8081
       DISABLE_CRL_CHECKS: "true"
-      # De outway leest z'n contract-/service-config van de eigen manager (internal-unauthenticated):
-      MANAGER_INTERNAL_UNAUTHENTICATED_ADDRESS: https://manager.uitvraag-org.fsc-test.local:9444
+      # De outway registreert zich bij de controller en praat met de manager op de authenticated
+      # interne poort (:9443). fsc-outway serve eist beide (manager-internal-address +
+      # controller-registration-api-address), net als de inway aan providerkant.
+      MANAGER_INTERNAL_ADDRESS: https://manager.uitvraag-org.fsc-test.local:9443
+      CONTROLLER_REGISTRATION_API_ADDRESS: https://controller.uitvraag-org.fsc-test.local:9443
       # Echte txlog-api (INTERNAL-PKI mTLS): bij egress logt de outway de transactie (direction: out).
       TX_LOG_API_ADDRESS: https://txlog.uitvraag-org.fsc-test.local:9443
       TLS_ROOT_CERT: /pki/internal/uitvraag-org/ca/root.pem
@@ -192,6 +195,8 @@ services:
           - outway.uitvraag-org.fsc-test.local
     depends_on:
       manager-uitvraag-org:
+        condition: service_started
+      controller-uitvraag-org:
         condition: service_started
       txlog-uitvraag-org:
         condition: service_started

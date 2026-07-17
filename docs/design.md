@@ -80,16 +80,17 @@ en bereikt de outway intra-project.
 | Component | ZAD-ref | Rol |
 |-----------|---------|-----|
 | manager | `uvrmgr` | announce bij de directory + contract-/token-uitgifte; `manager-migrate`-wrapper migreert de peer-DB bij boot. Géén `AUTO_SIGN_GRANTS` (dat is directory-only). |
-| outway | `uvrout` | egress-proxy vóór de uitvraag-app; leest z'n contract-/service-config van de eigen manager (internal-unauthenticated `:9444`). Géén controller-registratie, géén inbound router-route (de outway is client). |
+| outway | `uvrout` | egress-proxy vóór de uitvraag-app; registreert zich bij de controller (`:9443`) en praat met de manager op de authenticated interne poort (`:9443`) — `fsc-outway serve` eist beide (`manager-internal-address` + `controller-registration-api-address`). Géén inbound router-route (de outway is client, geen ingress). |
 | controller | `uvrctl` | beheer-UI: afnemer-toegang aanvragen + contracten beheren/inspecteren (Administration/Registration-API, `AUTHN_TYPE=none`); `controller-migrate`-wrapper migreert bij boot. |
 | txlog | `uvrtxlog` | transaction-log API (internal-PKI mTLS, eigen DB). Verplicht: een niet-directory-manager faalt hard op een lege `TX_LOG_API_ADDRESS`. Manager + outway wijzen ernaar. |
 | DB | `uvrpg` (self-hosted Postgres, één DB, geïsoleerde migratie-tellers) | system-of-record manager + controller + txlog. |
 
 **Verschillen t.o.v. de provider-peer (magazijn-a):**
 
-- **outway i.p.v. inway.** De inway is een *ingress* vóór een aangeboden dienst (registreert bij de
-  controller, kent een upstream); de outway is een *egress* die z'n config van de eigen manager
-  leest. Geen `upstream`, geen `CreateService`, geen inbound SNI-route.
+- **outway i.p.v. inway.** De inway is een *ingress* vóór een aangeboden dienst (kent een upstream);
+  de outway is een *egress*. Beide registreren zich bij de controller (`controller-registration-api-address`)
+  en praten met de manager op de interne poort. Verschil voor de consumer: geen `upstream`, geen
+  `CreateService`, geen inbound SNI-route.
 - **manager zonder `AUTO_SIGN_GRANTS`.** De consumer publiceert geen dienst; er is niets auto te
   signen. Auto-sign van servicePublication is een directory-eigenschap.
 - **controller in beheer-rol.** Aan de provider-kant maakt de controller de dienst aan en registreert
@@ -117,7 +118,7 @@ De PKI-scripts (`gen-csr.sh`/`issue.sh`/`verify.sh`/`gen-crl.sh`/`zad-bundle.sh`
 uitvraag-org                                 centrale kern (directory)
   manager ───announce────────────────────►  directory-manager (peers.peers, :443)
   controller ──(beheer-UI: contract aanvragen/inspecteren)──► eigen manager (:9443)
-  outway ────(leest config)──────────────►  eigen manager (:9444, internal-unauth)
+  outway ──register + config──────────────►  eigen controller (:9443) + manager (:9443)
 ```
 
 1. **Cert** — group-cert voor OIN `00000000000000000020` (lokaal `issue.sh`).

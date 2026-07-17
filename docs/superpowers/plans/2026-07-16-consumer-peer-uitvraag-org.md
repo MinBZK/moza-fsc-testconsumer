@@ -334,6 +334,8 @@ Controleer na de sed-achtige vervangingen dat er nergens meer `magazijn-a`, `mgz
 ```
 
 > **Verifieer bij de eerste host-run (Task 8):** de exacte outway-env-namen (`LISTEN_ADDRESS`, `NAME`, `MANAGER_INTERNAL_UNAUTHENTICATED_ADDRESS`) tegen `docker run --rm federatedserviceconnectivity/outway:v1.43.7 /usr/local/bin/outway serve --help` of de OpenFSC `helm/charts`-outway-values. Cert-paden + hostnamen blijven gelijk; pas alleen env-sleutels aan als de image andere namen verwacht.
+>
+> **RESOLVED (na ZAD-deploy):** `fsc-outway serve` v1.43.7 eist `MANAGER_INTERNAL_ADDRESS` (authenticated, `:9443`) + `CONTROLLER_REGISTRATION_API_ADDRESS` (`:9443`) — níet `MANAGER_INTERNAL_UNAUTHENTICATED_ADDRESS`. De outway registreert zich dus, net als de inway, bij de controller. `upsert-peer.sh`/de compose/`design.md` dragen de gecorrigeerde env; deze plan-blokken blijven als historisch record staan.
 
 - [ ] **Step 5: Config-consistentie + lint**
 

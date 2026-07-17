@@ -205,7 +205,8 @@ UVROUT_ENV="$(printf '%s\n' \
   "TLS_CERT=/etc/fsc/internal/uitvraag-org/outway/cert.pem" \
   "TLS_KEY=/etc/fsc/internal/uitvraag-org/outway/key.pem" \
   "SELF_ADDRESS=https://${UVROUT_HOST_DISPLAY}:443" \
-  "MANAGER_INTERNAL_UNAUTHENTICATED_ADDRESS=https://${UVRMGR_SVC}:9444" \
+  "MANAGER_INTERNAL_ADDRESS=https://${UVRMGR_SVC}:9443" \
+  "CONTROLLER_REGISTRATION_API_ADDRESS=https://${UVRCTL_SVC}:9443" \
   "TX_LOG_API_ADDRESS=https://${UVRTXLOG_SVC}:8443")"
 # Geen managed DB en geen $DATABASE_*-substitutie -> geen aliases nodig (alle adressen staan
 # concreet in env_vars hierboven).
