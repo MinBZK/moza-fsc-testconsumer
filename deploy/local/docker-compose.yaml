@@ -53,6 +53,7 @@ services:
         aliases:
           - directory.fsc-test.local
           - uitvraag-org.fsc-test.local
+          - inway.uitvraag-org.fsc-test.local
     depends_on:
       manager-directory:
         condition: service_started
@@ -197,6 +198,50 @@ services:
       manager-uitvraag-org:
         condition: service_started
       controller-uitvraag-org:
+        condition: service_started
+      txlog-uitvraag-org:
+        condition: service_started
+
+  inway-uitvraag-org:
+    image: docker.io/federatedserviceconnectivity/inway:${IMAGE_TAG:-v1.43.7}
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"   # host-UID -> leest 0600-keys
+    restart: on-failure                            # boot-race met controller/manager
+    command:
+      - /usr/local/bin/inway
+      - serve
+    environment:
+      LOG_TYPE: local
+      LOG_LEVEL: debug
+      GROUP_ID: moza-fbs-test
+      # geregistreerde inway-naam; SELF_ADDRESS wordt als inway_address doorgegeven bij CreateService
+      NAME: uitvraag-org-inway
+      SELF_ADDRESS: https://inway.uitvraag-org.fsc-test.local:443
+      LISTEN_ADDRESS: 0.0.0.0:8443
+      MONITORING_ADDRESS: 0.0.0.0:8081
+      DISABLE_CRL_CHECKS: "true"
+      # Registreert zich bij de controller via TLS op de controller-internal-cert:
+      CONTROLLER_REGISTRATION_API_ADDRESS: https://controller.uitvraag-org.fsc-test.local:9443
+      # Eigen manager, internal-UNAUTHENTICATED poort (:9444) — bewust anders dan de outway,
+      # die de authenticated :9443 gebruikt. Conform magazijn-a's bewezen inway-config.
+      MANAGER_INTERNAL_UNAUTHENTICATED_ADDRESS: https://manager.uitvraag-org.fsc-test.local:9444
+      # Echte txlog-api (INTERNAL-PKI mTLS). Bij een inkomende data-call logt de inway hier de
+      # transactie (direction: in) met dezelfde Fsc-Transaction-Id als de outway.
+      TX_LOG_API_ADDRESS: https://txlog.uitvraag-org.fsc-test.local:9443
+      TLS_ROOT_CERT: /pki/internal/uitvraag-org/ca/root.pem
+      TLS_CERT: /pki/internal/uitvraag-org/inway/cert.pem
+      TLS_KEY: /pki/internal/uitvraag-org/inway/key.pem
+      TLS_GROUP_ROOT_CERT: /pki/ca/root.pem
+      TLS_GROUP_CERT: /pki/out/uitvraag-org/inway/cert.pem
+      TLS_GROUP_KEY: /pki/out/uitvraag-org/inway/key.pem
+    volumes:
+      - "${PKI_DIR:?zet PKI_DIR in .env}:/pki:ro"
+    # NB: géén network-alias inway.uitvraag-org.fsc-test.local hier — die hoort op de router
+    # (:443-SNI-passthrough, zie hierboven bij `router`). De router-backend bereikt deze
+    # container via de compose-servicenaam `inway-uitvraag-org:8443`.
+    depends_on:
+      controller-uitvraag-org:
+        condition: service_started
+      manager-uitvraag-org:
         condition: service_started
       txlog-uitvraag-org:
         condition: service_started
