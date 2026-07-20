@@ -1,11 +1,12 @@
-# Uitvraag-org — FSC consumer-peer
+# Uitvraag-org — FSC peer
 
-Een **FSC consumer-peer** voor de uitvraag-organisatie die als **afnemer** aansluit op de
+Een **FSC-peer** voor de uitvraag-organisatie die oorspronkelijk als **afnemer** aansloot op de
 FSC-federatie van [`moza-fsc-testnet`](https://github.com/MinBZK/moza-fsc-testnet) (repo A — de
-directory + group-CA) en straks via een lokale **outway** de dienst `berichtenmagazijn` bij
-magazijn-a aanroept. De peer bestaat uit de standaard OpenFSC-componenten
-**manager + outway + controller + txlog** met een eigen managed Postgres, co-located met de
-achterliggende uitvraag-app.
+directory + group-CA) via een lokale **outway** naar de dienst `berichtenmagazijn` bij magazijn-a.
+Sinds de inway-uitbreiding is de peer **bidirectioneel**: naast de outway (afname) draait er nu ook
+een **inway** (aanbod). De peer bestaat uit de OpenFSC-componenten
+**manager + outway + inway + controller + txlog** met een eigen self-hosted Postgres, co-located met
+de achterliggende uitvraag-app.
 
 Gemodelleerd naar de provider-peer in
 [`moza-fsc-org-a`](https://github.com/MinBZK/moza-fsc-org-a); deze repo bevat uitsluitend FSC-infra
@@ -22,7 +23,7 @@ Gemodelleerd naar de provider-peer in
 | Peer-OIN (= Peer ID) | `00000000000000000020` |
 | Group ID | `moza-fbs-test` |
 | Directory-OIN | `00000000000000000010` |
-| Componenten | manager + outway + controller + txlog + postgres |
+| Componenten | manager + outway + inway + controller + txlog + postgres |
 | FSC-images (pin) | `v1.43.7` |
 
 ## Structuur
@@ -30,7 +31,7 @@ Gemodelleerd naar de provider-peer in
 | Pad | Rol |
 |-----|-----|
 | `pki/` | Test-PKI: group- + internal-certs per endpoint (cfssl). Zie `pki/README.md`. |
-| `deploy/local/` | Lokale docker-compose-proof: directory + consumer-peer + SNI-router + announce-smoke. |
+| `deploy/local/` | Lokale docker-compose-proof: directory + peer + SNI-router + announce-smoke. |
 | `deploy/zad/` | ZAD-rollout (Operations Manager v2-API): `upsert-peer.sh` + cert-/verificatie-runbooks. |
 | `.github/workflows/zad-deploy-peer.yml` | Deployt de peer naar ZAD (plan op PR, apply op main). |
 | `docs/design.md` | Ontwerp + scope. |

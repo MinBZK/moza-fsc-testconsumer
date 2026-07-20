@@ -35,7 +35,7 @@ PEER="uitvraag-org"
 OIN="00000000000000000020"                                # = subject.serialNumber = Peer ID
 # endpoint:component-korte-naam (de ZAD-component + Service heet `<deployment>-<short>`). Volgorde
 # bepaalt de uitvoer-volgorde; spiegelt de UVR*_SVC-namen in upsert-peer.sh.
-ENDPOINTS=( "manager:uvrmgr" "outway:uvrout" "controller:uvrctl" "txlog:uvrtxlog" )
+ENDPOINTS=( "manager:uvrmgr" "outway:uvrout" "inway:uvrin" "controller:uvrctl" "txlog:uvrtxlog" )
 
 # Genereer per endpoint de csr.json. SAN-volgorde: peer-identiteit (alleen manager) ->
 # <endpoint>.<peer>.fsc-test.local -> externe mesh-host -> Service-kortnaam -> Service-FQDN.

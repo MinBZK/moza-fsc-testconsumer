@@ -1,9 +1,11 @@
-# ZAD-deploy — consumer-peer uitvraag-org
+# ZAD-deploy — peer uitvraag-org
 
-ZAD-rollout van de FSC-consumer-peer `uitvraag-org` (manager `uvrmgr`, controller `uvrctl`, outway
-`uvrout`, txlog `uvrtxlog`) in een **eigen ZAD-project** (`mpfuc-84g`, deployment `test`).
-De consumer publiceert geen dienst en heeft geen upstream-app: de outway bereikt de aanbiedende
-peer straks rechtstreeks over de FSC-mesh, niet cross-project. Bouwt voort op `pki/`
+ZAD-rollout van de FSC-peer `uitvraag-org` (manager `uvrmgr`, controller `uvrctl`, outway
+`uvrout`, inway `uvrin`, txlog `uvrtxlog`, self-hosted Postgres `uvrpg`) in een **eigen
+ZAD-project** (`mpfuc-84g`, deployment `test`). De peer heeft nog geen gepubliceerde dienst en
+geen upstream-app (`CreateService` volgt zodra de upstream bekend is): de outway bereikt de
+aanbiedende peer straks rechtstreeks over de FSC-mesh, niet cross-project, en de inway staat
+technisch klaar om zelf een dienst aan te bieden. Bouwt voort op `pki/`
 (certs) en `deploy/local/` (lokale compose-proof van dezelfde peer); zie die README's voor het
 cert-contract resp. de lokale smokes.
 
@@ -24,8 +26,9 @@ cert-contract resp. de lokale smokes.
 
 ## Volgorde
 
-1. **Certs** — `pki/init-ca.sh` → `pki/issue.sh` → `pki/verify.sh`
-   (vereist `cfssl`; zie `pki/README.md`).
+1. **Certs** — `pki/issue.sh` → `pki/verify.sh` (vereist `cfssl`; zie `pki/README.md`). **Niet**
+   `pki/init-ca.sh` — zie de callout hierboven: dat maakt een verse, vreemde CA in plaats van
+   fsc-testnet's group-CA te gebruiken.
 2. **Bundle** — `pki/zad-bundle.sh uitvraag-org` (hangt af van stap 1) →
    upload-klare cert-set in `pki/zad-upload/uitvraag-org/`.
 3. **Deployment `test` moet bestaan** in het eigen project — de raw v2-API `:upsert-deployment`
@@ -34,11 +37,11 @@ cert-contract resp. de lokale smokes.
    en bestaat dus al. Zo niet: maak het éénmalig handmatig (leeg) aan in de Operations Manager-UI.
    De workflow zet daarna de componenten + images.
 4. **`upsert-peer.sh plan [deployment] [tag]`** (dry-run, wél uitvoerbaar — alleen `jq`, geen
-   netwerk) — toont de deployment- + vijf component-bodies zonder te muteren.
+   netwerk) — toont de deployment- + zes component-bodies zonder te muteren.
 5. **`upsert-peer.sh validate`** (vereist `ZAD_API_KEY`) — read-only auth-check tegen
    de ZAD-API.
 6. **`upsert-peer.sh apply [deployment] [tag]`** (vereist `ZAD_API_KEY`) — upsert het
-   deployment + de vijf componenten, pollt de resulterende tasks.
+   deployment + de zes componenten, pollt de resulterende tasks.
 7. **UI-mount** (zie `cert-manifest.md`) — cert-attachments + "Publicatie op het web"
    (passthrough-TLS) zijn UI-only; de v2-API dekt dit niet.
 8. **`verify-zad.md`** — announce.
@@ -52,8 +55,8 @@ cert-contract resp. de lokale smokes.
 | `ZAD_DEPLOYMENT` | `test` | Default voor het `[deployment]`-argument (het CLI-arg wint). Gedeeld met `pki/gen-csr.sh` zodat cert-SAN's en deploy-adressen sporen. |
 | `ZAD_BASE` | `https://zad.rijksapp.nl` | Basis-URL van de ZAD v2 Operations Manager API. |
 | `ZAD_BASE_DOMAIN` | `rig.prd1.gn2.quattro.rijksapps.nl` | Base-domain voor de per-component mesh-hostnamen. |
-| `ZAD_MANAGER_TAG` / `ZAD_CONTROLLER_TAG` / `ZAD_TXLOG_TAG` | = het `tag`-argument | Losse tag-override per migrate-wrapper (ghcr `{manager,controller,txlog}-migrate`), los van de OpenFSC stock-tag voor de outway. |
-| `ZAD_MANAGER_IMAGE` / `ZAD_CONTROLLER_IMAGE` / `ZAD_TXLOG_IMAGE` | ghcr `…/{manager,controller,txlog}-migrate:<tag>` | Volledige image-override per wrapper — zet dit als het ghcr-pad afwijkt. manager/controller/txlog draaien een wrapper (`migrate up && serve`); de outway heeft geen DB en gebruikt het stock-image. |
+| `ZAD_MANAGER_TAG` / `ZAD_CONTROLLER_TAG` / `ZAD_TXLOG_TAG` | = het `tag`-argument | Losse tag-override per migrate-wrapper (ghcr `{manager,controller,txlog}-migrate`), los van de OpenFSC stock-tag voor outway en inway. |
+| `ZAD_MANAGER_IMAGE` / `ZAD_CONTROLLER_IMAGE` / `ZAD_TXLOG_IMAGE` | ghcr `…/{manager,controller,txlog}-migrate:<tag>` | Volledige image-override per wrapper — zet dit als het ghcr-pad afwijkt. manager/controller/txlog draaien een wrapper (`migrate up && serve`); outway en inway hebben geen DB en gebruiken het stock-image. |
 | `ZAD_DIRECTORY_MANAGER_HOST` | `dirmgr-test-mft-tp9.<base-domain>` | Repo A's directory-manager-host op ZAD — pas aan als de directory op een andere deployment/project draait. |
 | `ZAD_PG_SSLMODE` | `disable` | SSL-mode voor de `uvrpg`-DSN (intra-cluster plaintext, zoals berichtenbox-JDBC). |
 | `ZAD_PG_PASSWORD` | — (verplicht bij `apply`) | Wachtwoord voor de self-hosted Postgres (`uvrpg`). **Niet** committen; `export` (niet inline). Komt zowel in `POSTGRES_PASSWORD` als in de component-DSN's. |

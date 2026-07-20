@@ -2,11 +2,13 @@
 
 ## Project
 
-**uitvraag-org-fsc-peer** — de **FSC consumer-peer** van de uitvraag-organisatie, die als
-**afnemer** aansluit op de gedeelde FSC-testfederatie van
-[MinBZK/moza-fsc-testnet](https://github.com/MinBZK/moza-fsc-testnet) (repo A — directory + group-CA)
-en straks via een lokale outway de dienst `berichtenmagazijn` bij
-[moza-fsc-org-a](https://github.com/MinBZK/moza-fsc-org-a) (de provider-peer) aanroept.
+**uitvraag-org-fsc-peer** — de **FSC-peer** van de uitvraag-organisatie, die aansluit op de
+gedeelde FSC-testfederatie van
+[MinBZK/moza-fsc-testnet](https://github.com/MinBZK/moza-fsc-testnet) (repo A — directory + group-CA).
+Oorspronkelijk uitsluitend **afnemer** (roept via een lokale outway de dienst `berichtenmagazijn`
+bij [moza-fsc-org-a](https://github.com/MinBZK/moza-fsc-org-a) (de provider-peer) aan); sinds de
+inway-uitbreiding (2026-07-20) is de peer **bidirectioneel** — hij neemt af én biedt aan, al is er
+nog geen gepubliceerde dienst.
 
 - **Gerelateerd:** [moza-fsc-testnet](https://github.com/MinBZK/moza-fsc-testnet) (infra + directory),
   [moza-fsc-org-a](https://github.com/MinBZK/moza-fsc-org-a) (de provider-peer),
@@ -23,12 +25,12 @@ contract, trust-anchor, passthrough, SNI, txlog, announce.
 
 - **GEEN fork** van de FSC-software. Dit is een **deploy- en configuratie-repo** die
   [OpenFSC](https://gitlab.com/rinis-oss/fsc/open-fsc) (EUPL-1.2, RINIS) consumeert via haar
-  container-images (`manager`, `outway`, `controller`, `txlog-api`, gepind op `v1.43.7`).
+  container-images (`manager`, `outway`, `inway`, `controller`, `txlog-api`, gepind op `v1.43.7`).
 - **WEL**: onze test-PKI, peer-configuratie, ZAD-deploy (`upsert-peer.sh` + workflow), runbooks.
 - **Migratie-wrappers:** ZAD ondersteunt geen init-containers/args → de migratie zit in het image
   zelf. manager/controller/txlog draaien elk een wrapper-image
   `ghcr.io/minbzk/moza-fsc-testnet/{manager,controller,txlog}-migrate` (`migrate up && serve`); de
-  outway heeft geen DB en gebruikt het stock-image. Override per image met
+  outway en de inway hebben geen DB en gebruiken het stock-image. Override per image met
   `ZAD_{MANAGER,CONTROLLER,TXLOG}_IMAGE` of enkel de tag met `ZAD_{MANAGER,CONTROLLER,TXLOG}_TAG`.
 
 ## Identiteit
@@ -39,7 +41,7 @@ contract, trust-anchor, passthrough, SNI, txlog, announce.
 | Peer-OIN = Peer ID (`subject.serialNumber`) | `00000000000000000020` |
 | Group ID | `moza-fbs-test` |
 | Directory-OIN | `00000000000000000010` (draait in repo A) |
-| Endpoints | `manager`, `outway`, `controller`, `txlog` |
+| Endpoints | `manager`, `outway`, `inway`, `controller`, `txlog` |
 | ZAD-project / deployment | `mpfuc-84g` / `test` |
 
 **Peer ID = geldige OIN** (uit cert `subject.serialNumber`), peer-naam uit `subject.organization`.
@@ -94,6 +96,11 @@ De ZAD Operations Manager v2-API heeft niet-triviaal gedrag. Deze punten kostten
   component-`ports`-array krijgt een eigen ClusterIP-Service) — NIET meer via de `:443`-ingress. De
   internal-certs dragen daarom `test-<comp>` (+ svc-FQDN) als SAN. Zie `docs/zad-fsc-mesh-blocker.md`
   (resolutie) + `deploy/zad/upsert-peer.sh`.
+- **inway vs outway: verschillende manager-poort.** De outway praat met de manager op de
+  authenticated `:9443` (`MANAGER_INTERNAL_ADDRESS`, sinds `e7300c5`); de inway op de
+  internal-unauthenticated `:9444` (`MANAGER_INTERNAL_UNAUTHENTICATED_ADDRESS`), conform
+  magazijn-a's bewezen provider-config. **Empirisch bevestigd op 2026-07-20**: `fsc-inway serve`
+  v1.43.7 boot lokaal gezond met de unauthenticated variant. Niet uniformeren.
 
 ## Repo-structuur
 

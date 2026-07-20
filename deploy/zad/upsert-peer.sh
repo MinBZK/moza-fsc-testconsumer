@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Zet de consumer-peer uitvraag-org (manager+controller+outway+txlog) op ZAD via de v2 Operations
+# Zet de peer uitvraag-org (postgres+manager+controller+outway+inway+txlog) op ZAD via de v2 Operations
 # Manager API in een EIGEN ZAD-project (mpfuc-84g, deployment `test`). Gebaseerd op
 # moza-fsc-org-a's deploy/zad/upsert-peer.sh (de aanbiedende provider-peer-analoog), zelf gemodelleerd naar
 # repo A's deploy/zad/upsert-directory.sh (MinBZK/moza-fsc-testnet) — zelfde validate/plan/apply-
@@ -10,9 +10,9 @@
 #
 # Model: de peer draait in de deployment `test` van het eigen project. Doordat het een eigen project
 # is, is er geen app-deployment om te overschrijven (project-isolatie i.p.v. deployment-isolatie). De
-# consumer publiceert geen dienst en heeft geen upstream-app: geen ingress-component vóór een
-# aangeboden dienst, geen CreateService, geen upstream-URL-logica. De outway leest z'n
-# contract-/service-config van de eigen manager.
+# peer is bidirectioneel: de outway neemt af, de inway biedt aan. Er is nog géén gepubliceerde
+# dienst — geen CreateService, geen upstream-URL-logica — omdat de upstream nog niet bekend is;
+# de inway staat er technisch wel klaar voor.
 # `:upsert-deployment` zet per component de {reference,image} en updatet het deployment;
 # POST /components verrijkt elke component met env_vars/ports/services/aliases.
 #
@@ -98,11 +98,12 @@ case "${TXLOG_TAG}" in ""|*[!A-Za-z0-9._-]*) echo "ongeldige ZAD_TXLOG_TAG: '${T
 # manager/controller/txlog draaien een migrate-WRAPPER (`migrate up && serve`) i.p.v. het OpenFSC
 # stock-image: ZAD kent geen init-containers/args, dus de migratie moet in het image zelf zitten. De
 # wrappers staan naast manager-migrate in dezelfde ghcr-repo. Wijkt een pad af, override dan het hele
-# image met ZAD_MANAGER_IMAGE / ZAD_CONTROLLER_IMAGE / ZAD_TXLOG_IMAGE. De outway heeft geen DB en dus
-# geen migratie -> stock-image.
+# image met ZAD_MANAGER_IMAGE / ZAD_CONTROLLER_IMAGE / ZAD_TXLOG_IMAGE. De outway en inway hebben geen
+# DB en dus geen migratie -> stock-image.
 MANAGER_IMAGE="${ZAD_MANAGER_IMAGE:-ghcr.io/minbzk/moza-fsc-testnet/manager-migrate:${MANAGER_TAG}}"
 CONTROLLER_IMAGE="${ZAD_CONTROLLER_IMAGE:-ghcr.io/minbzk/moza-fsc-testnet/controller-migrate:${CONTROLLER_TAG}}"
 OUTWAY_IMAGE="docker.io/federatedserviceconnectivity/outway:${IMAGE_TAG}"
+INWAY_IMAGE="docker.io/federatedserviceconnectivity/inway:${IMAGE_TAG}"
 TXLOG_IMAGE="${ZAD_TXLOG_IMAGE:-ghcr.io/minbzk/moza-fsc-testnet/txlog-migrate:${TXLOG_TAG}}"
 POSTGRES_IMAGE="${ZAD_POSTGRES_IMAGE:-docker.io/library/postgres:17}"   # self-hosted DB (spiegelt deploy/local)
 
@@ -113,6 +114,7 @@ POSTGRES_IMAGE="${ZAD_POSTGRES_IMAGE:-docker.io/library/postgres:17}"   # self-h
 UVRMGR_HOST_DISPLAY="uvrmgr-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
 UVRCTL_HOST_DISPLAY="uvrctl-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
 UVROUT_HOST_DISPLAY="uvrout-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
+UVRIN_HOST_DISPLAY="uvrin-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
 UVRTXLOG_HOST_DISPLAY="uvrtxlog-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
 
 # Cluster-INTERNE Service-DNS (sinds de ZAD-multi-poort-fix, 2026-07-13). Elke component exposet nu
@@ -126,6 +128,7 @@ UVRTXLOG_HOST_DISPLAY="uvrtxlog-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
 UVRMGR_SVC="${DEPLOYMENT}-uvrmgr"
 UVRCTL_SVC="${DEPLOYMENT}-uvrctl"
 UVROUT_SVC="${DEPLOYMENT}-uvrout"
+UVRIN_SVC="${DEPLOYMENT}-uvrin"
 UVRTXLOG_SVC="${DEPLOYMENT}-uvrtxlog"
 UVRPG_SVC="${DEPLOYMENT}-uvrpg"                  # self-hosted Postgres, intern op :5432
 
@@ -187,10 +190,10 @@ UVRCTL_ENV="$(printf '%s\n' \
   "MANAGER_ADDRESS_INTERNAL=https://${UVRMGR_SVC}:9443")"
 UVRCTL_ALIASES=""
 
-# outway (egress-proxy): leest z'n contract-/service-config van de eigen manager op de
-# internal-unauthenticated-poort (:9444) — geen controller-registratie, geen upstream, geen
-# CreateService (de consumer publiceert geen dienst). Neemt de rol over van de ingress-component
-# aan de aanbiedende kant (provider-peer).
+# outway (egress-proxy): registreert zich bij de controller en praat met de manager op de
+# AUTHENTICATED interne poort (:9443) — `fsc-outway serve` eist beide (manager-internal-address +
+# controller-registration-api-address), zie e7300c5. Bewust anders dan de inway hieronder, die de
+# internal-UNAUTHENTICATED poort (:9444) gebruikt. Geen upstream: de outway is de afnemende kant.
 UVROUT_ENV="$(printf '%s\n' \
   "LOG_TYPE=live" "LOG_LEVEL=info" \
   "NAME=uitvraag-org-outway" \
@@ -211,6 +214,31 @@ UVROUT_ENV="$(printf '%s\n' \
 # Geen managed DB en geen $DATABASE_*-substitutie -> geen aliases nodig (alle adressen staan
 # concreet in env_vars hierboven).
 UVROUT_ALIASES=""
+
+# inway (ingress-proxy): de tegenhanger van uvrout. Registreert zich bij de controller en leest
+# z'n service-/contract-config bij de manager op de internal-UNAUTHENTICATED poort (:9444) —
+# dit is bewust een andere edge dan de outway (die gebruikt de authenticated :9443, zie e7300c5);
+# conform de bewezen provider-config van magazijn-a. Kent GEEN upstream-env: de upstream-URL is
+# de endpoint_url bij service-publicatie op de uvrctl Administration-API (nog niet ingericht).
+UVRIN_ENV="$(printf '%s\n' \
+  "LOG_TYPE=live" "LOG_LEVEL=info" \
+  "NAME=uitvraag-org-inway" \
+  "GROUP_ID=moza-fbs-test" \
+  "LISTEN_ADDRESS=0.0.0.0:8443" \
+  "MONITORING_ADDRESS=0.0.0.0:8081" \
+  "DISABLE_CRL_CHECKS=true" \
+  "TLS_GROUP_ROOT_CERT=/etc/fsc/ca/root.pem" \
+  "TLS_GROUP_CERT=/etc/fsc/out/uitvraag-org/inway/cert.pem" \
+  "TLS_GROUP_KEY=/etc/fsc/out/uitvraag-org/inway/key.pem" \
+  "TLS_ROOT_CERT=/etc/fsc/internal/uitvraag-org/ca/root.pem" \
+  "TLS_CERT=/etc/fsc/internal/uitvraag-org/inway/cert.pem" \
+  "TLS_KEY=/etc/fsc/internal/uitvraag-org/inway/key.pem" \
+  "SELF_ADDRESS=https://${UVRIN_HOST_DISPLAY}:443" \
+  "CONTROLLER_REGISTRATION_API_ADDRESS=https://${UVRCTL_SVC}:9443" \
+  "MANAGER_INTERNAL_UNAUTHENTICATED_ADDRESS=https://${UVRMGR_SVC}:9444" \
+  "TX_LOG_API_ADDRESS=https://${UVRTXLOG_SVC}:8443")"
+# Geen managed DB en geen $DATABASE_*-substitutie -> geen aliases nodig.
+UVRIN_ALIASES=""
 
 # txlog-api (mirror van deploy/local): mTLS op de INTERNAL-PKI (geen group-cert, geen GROUP_ID —
 # group-agnostische opslag). De manager/outway loggen hier transacties; OpenFSC eist een niet-lege
@@ -258,9 +286,9 @@ component_body() {  # $1=name $2=image $3=ports_json $4=env  [$5=services_json=[
 
 DEPLOY_BODY="$(jq -n --arg d "${DEPLOYMENT}" --arg cf "${CLONE_FROM}" \
   --arg mgr "${MANAGER_IMAGE}" --arg ctl "${CONTROLLER_IMAGE}" --arg outway "${OUTWAY_IMAGE}" \
-  --arg txlog "${TXLOG_IMAGE}" --arg pg "${POSTGRES_IMAGE}" \
+  --arg inway "${INWAY_IMAGE}" --arg txlog "${TXLOG_IMAGE}" --arg pg "${POSTGRES_IMAGE}" \
   '{deploymentName:$d, domain_format:"component-deployment-project",
-    components:[{reference:"uvrpg", image:$pg}, {reference:"uvrmgr", image:$mgr}, {reference:"uvrctl", image:$ctl}, {reference:"uvrout", image:$outway}, {reference:"uvrtxlog", image:$txlog}]}
+    components:[{reference:"uvrpg", image:$pg}, {reference:"uvrmgr", image:$mgr}, {reference:"uvrctl", image:$ctl}, {reference:"uvrout", image:$outway}, {reference:"uvrin", image:$inway}, {reference:"uvrtxlog", image:$txlog}]}
    + (if $cf=="" then {} else {cloneFrom:$cf, forceClone:false} end)')"
 
 # Poorten per component (ports[0] = ingress). manager/controller exposen naast de ingress hun interne
@@ -271,6 +299,7 @@ UVRPG_BODY="$(component_body uvrpg "${POSTGRES_IMAGE}" '[5432]' "${UVRPG_ENV}" '
 UVRMGR_BODY="$(component_body uvrmgr "${MANAGER_IMAGE}" '[8443,9443,9444]' "${UVRMGR_ENV}" '[]' "${UVRMGR_ALIASES}")"
 UVRCTL_BODY="$(component_body uvrctl "${CONTROLLER_IMAGE}" '[8080,9443,9444]' "${UVRCTL_ENV}" '[]' "${UVRCTL_ALIASES}")"
 UVROUT_BODY="$(component_body uvrout "${OUTWAY_IMAGE}" '[8443]' "${UVROUT_ENV}" '[]' "${UVROUT_ALIASES}")"
+UVRIN_BODY="$(component_body uvrin "${INWAY_IMAGE}" '[8443]' "${UVRIN_ENV}" '[]' "${UVRIN_ALIASES}")"
 UVRTXLOG_BODY="$(component_body uvrtxlog "${TXLOG_IMAGE}" '[8443]' "${UVRTXLOG_ENV}" '[]' "${UVRTXLOG_ALIASES}")"
 
 # ---- plan: toon alleen ----
@@ -280,8 +309,9 @@ if [ "${MODE}" = plan ]; then
   echo "### component uvrmgr (manager -> uvrpg schema '${MGR_SCHEMA:-public}')"; echo "${UVRMGR_BODY}"
   echo "### component uvrctl (controller -> uvrpg schema '${CTL_SCHEMA:-public}')"; echo "${UVRCTL_BODY}"
   echo "### component uvrout (outway)"; echo "${UVROUT_BODY}"
+  echo "### component uvrin (inway)"; echo "${UVRIN_BODY}"
   echo "### component uvrtxlog (txlog-api -> uvrpg schema '${TXLOG_SCHEMA:-public}')"; echo "${UVRTXLOG_BODY}"
-  echo "Extern (mesh, :443): uvrmgr=${UVRMGR_HOST_DISPLAY}  (uvrout=${UVROUT_HOST_DISPLAY} is egress-only — geen mesh-ingress)"
+  echo "Extern (mesh, :443): uvrmgr=${UVRMGR_HOST_DISPLAY} uvrin=${UVRIN_HOST_DISPLAY}  (uvrout=${UVROUT_HOST_DISPLAY} is egress-only — geen mesh-ingress)"
   echo "Intern (cluster-Service-DNS): ${UVRMGR_SVC}:9443/:9444  ${UVRCTL_SVC}:9443/:9444  ${UVRTXLOG_SVC}:8443  db=${UVRPG_SVC}:5432  (uvrctl-UI: ${UVRCTL_HOST_DISPLAY}:443)"
   echo "Directory-manager (repo A, extern): ${DIRECTORY_MANAGER_HOST}"
   exit 0
@@ -341,6 +371,7 @@ post "uvrpg"    "/components" "${UVRPG_BODY}"      # DB eerst; de FSC-componente
 post "uvrmgr"   "/components" "${UVRMGR_BODY}"
 post "uvrctl"   "/components" "${UVRCTL_BODY}"
 post "uvrout"   "/components" "${UVROUT_BODY}"
+post "uvrin"    "/components" "${UVRIN_BODY}"
 post "uvrtxlog" "/components" "${UVRTXLOG_BODY}"
 
 # De EERSTE :upsert-deployment (hierboven) rolt de pods uit MET de config van de vórige run — de
@@ -367,7 +398,7 @@ fi
 
 echo "Klaar. Nog handmatig (UI):"
 echo "  - uvrpg: init-script als bijlage op /docker-entrypoint-initdb.d/10-schemas.sql (zie postgres-init.sql)."
-echo "  - FSC-componenten: cert-bijlagen op /etc/fsc/... + Publicatie op het web modus 2 op uvrmgr (mesh :443; de outway uvrout is egress-only — geen web-publicatie/inbound ingress)."
+echo "  - FSC-componenten: cert-bijlagen op /etc/fsc/... + Publicatie op het web modus 2 op uvrmgr en uvrin (mesh :443; de outway uvrout is egress-only — geen web-publicatie/inbound ingress)."
 echo "  - DB-migraties: manager/controller/txlog migreren automatisch bij boot via hun migrate-wrapper-image (geen handmatige stap)."
-echo "Extern (mesh, :443): uvrmgr=${UVRMGR_HOST_DISPLAY}  (uvrout=${UVROUT_HOST_DISPLAY} is egress-only — geen mesh-ingress)"
+echo "Extern (mesh, :443): uvrmgr=${UVRMGR_HOST_DISPLAY} uvrin=${UVRIN_HOST_DISPLAY}  (uvrout=${UVROUT_HOST_DISPLAY} is egress-only — geen mesh-ingress)"
 echo "Intern (cluster-Service-DNS): ${UVRMGR_SVC}:9443/:9444  ${UVRCTL_SVC}:9443/:9444  ${UVRTXLOG_SVC}:8443  db=${UVRPG_SVC}:5432"

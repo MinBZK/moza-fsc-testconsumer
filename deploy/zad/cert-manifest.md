@@ -1,4 +1,4 @@
-# Cert-attachments op ZAD — consumer-peer uitvraag-org
+# Cert-attachments op ZAD — peer uitvraag-org
 
 > Draaiboek voor de mens: de cert-attachments mounten. Uit te voeren ná `pki/issue.sh` (zie
 > `pki/README.md`) en rond `upsert-peer.sh apply`.
@@ -27,7 +27,7 @@ services) maar **geen bijlagen** — net als repo A's directory-deploy
 2. `pki/zad-bundle.sh uitvraag-org` (hangt af van stap 1) — verzamelt de
    upload-klare set in `pki/zad-upload/uitvraag-org/` met een eigen `MANIFEST.md`
    (bestand → pod-pad → `TLS_*`-env-var, zie dat script voor de exacte `env_for()`-mapping).
-3. Per component (`uvrmgr`, `uvrctl`, `uvrout`) in de ZAD-UI: bijlage toevoegen op het
+3. Per component (`uvrmgr`, `uvrctl`, `uvrout`, `uvrin`) in de ZAD-UI: bijlage toevoegen op het
    `/etc/fsc/...`-pad uit de tabellen hieronder, met de bestandsinhoud uit stap 2's
    upload-set. De paden zijn identiek aan de `TLS_*`-waarden die `upsert-peer.sh` al als
    `env_vars`/`aliases` naar de component stuurt — de attachment moet dus exact op dat pad
@@ -65,6 +65,23 @@ de eigen manager op de internal-PKI) — vandaar geen `out/uitvraag-org/controll
 | `internal/uitvraag-org/ca/root.pem` | `internal/uitvraag-org/ca/root.pem` | `TLS_ROOT_CERT` |
 | `internal/uitvraag-org/outway/cert.pem` | `internal/uitvraag-org/outway/cert.pem` | `TLS_CERT` |
 | `internal/uitvraag-org/outway/key.pem` | `internal/uitvraag-org/outway/key.pem` | `TLS_KEY` |
+
+## uvrin (inway)
+
+De inway is een mesh-ingress en heeft daarom — net als uvrmgr — een GROUP-cert nodig, plus een
+INTERNAL-cert voor de edges naar controller/manager/txlog.
+
+| Bijlage-pad (`/etc/fsc/...`) | Bronbestand (`pki/...`) | Env-var op uvrin |
+|-------------------------------|-------------------------------------------|--------------------|
+| `ca/root.pem` | `ca/root.pem` | `TLS_GROUP_ROOT_CERT` |
+| `out/uitvraag-org/inway/cert.pem` | `out/uitvraag-org/inway/cert.pem` | `TLS_GROUP_CERT` |
+| `out/uitvraag-org/inway/key.pem` | `out/uitvraag-org/inway/key.pem` | `TLS_GROUP_KEY` |
+| `internal/uitvraag-org/ca/root.pem` | `internal/uitvraag-org/ca/root.pem` | `TLS_ROOT_CERT` |
+| `internal/uitvraag-org/inway/cert.pem` | `internal/uitvraag-org/inway/cert.pem` | `TLS_CERT` |
+| `internal/uitvraag-org/inway/key.pem` | `internal/uitvraag-org/inway/key.pem` | `TLS_KEY` |
+
+`out/uitvraag-org/inway/cert.pem` moet **twee** PEM-blokken bevatten (leaf + intermediate); een
+leaf-only mount faalt op de group-root.
 
 ## uvrtxlog (txlog-api)
 

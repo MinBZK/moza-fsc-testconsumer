@@ -1,12 +1,12 @@
-# Directe ZAD-API-deploy van de consumer-peer uitvraag-org (#781) via de v2 Operations Manager
+# Directe ZAD-API-deploy van de peer uitvraag-org (#781) via de v2 Operations Manager
 # API. Roept deploy/zad/upsert-peer.sh aan (zelfde bron als de CLI). Model op repo A's
 # zad-deploy-directory.yml (MinBZK/moza-fsc-testnet) en op org-a's zad-deploy-peer.yml, maar
-# zonder build-job: de vier images (manager-migrate, controller-migrate, outway, txlog-migrate)
-# zijn kant-en-klare pins — deze repo bouwt ze niet zelf.
+# zonder build-job: de vijf images (manager-migrate, controller-migrate, outway, inway,
+# txlog-migrate) zijn kant-en-klare pins — deze repo bouwt ze niet zelf.
 #
 # CLOBBER-VEILIG via PROJECT-ISOLATIE: de peer draait in een EIGEN ZAD-project (mpfuc-84g,
-# override via vars.ZAD_PROJECT_ID_UITVRAAG). De consumer publiceert geen
-# dienst en heeft geen upstream-app, dus geen ander project om mee te clobberen. Binnen dat project
+# override via vars.ZAD_PROJECT_ID_UITVRAAG). De peer heeft nog geen gepubliceerde dienst en
+# geen upstream-app, dus geen ander project om mee te clobberen. Binnen dat project
 # draait de peer in de deployment `test` -> één aanmelding van de federatie-OIN (singleton), geen
 # dubbele-OIN-botsing. De echte `apply` draait bovendien alleen op main; PR's plannen slechts (zie
 # de trigger-noot onder).
@@ -95,12 +95,14 @@ jobs:
           mgr="https://uvrmgr-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
           ctl="https://uvrctl-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
           outway="https://uvrout-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
+          inway="https://uvrin-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
           txlog="https://uvrtxlog-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
           body="${marker}
           ### FSC uitvraag-org-peer (deployment \`${DEPLOYMENT}\`)
           - uvrmgr (manager): ${mgr}
           - uvrctl (controller): ${ctl}
-          - uvrout (outway): ${outway}
+          - uvrout (outway, egress): ${outway}
+          - uvrin (inway, mesh-ingress): ${inway}
           - uvrtxlog (txlog): ${txlog}
 
           Eigen \`${DEPLOYMENT}\`-deployment, los van de app-deployments \`test\`/\`pr-<n>\` (clobber-veilig).
