@@ -26,8 +26,9 @@ cert-contract resp. de lokale smokes.
 
 ## Volgorde
 
-1. **Certs** — `pki/init-ca.sh` → `pki/issue.sh` → `pki/verify.sh`
-   (vereist `cfssl`; zie `pki/README.md`).
+1. **Certs** — `pki/issue.sh` → `pki/verify.sh` (vereist `cfssl`; zie `pki/README.md`). **Niet**
+   `pki/init-ca.sh` — zie de callout hierboven: dat maakt een verse, vreemde CA in plaats van
+   fsc-testnet's group-CA te gebruiken.
 2. **Bundle** — `pki/zad-bundle.sh uitvraag-org` (hangt af van stap 1) →
    upload-klare cert-set in `pki/zad-upload/uitvraag-org/`.
 3. **Deployment `test` moet bestaan** in het eigen project — de raw v2-API `:upsert-deployment`

@@ -68,8 +68,15 @@ ENDPOINTS=( "manager:uvrmgr" "outway:uvrout" "inway:uvrin" "controller:uvrctl" "
 Daarna regenereren:
 
 ```bash
-cd pki && ./issue.sh -f && ./gen-crl.sh && ./verify.sh && ./zad-bundle.sh uitvraag-org
+cd pki && ./issue.sh && ./gen-crl.sh && ./verify.sh && ./zad-bundle.sh uitvraag-org
 ```
+
+**Geen `-f`.** Er komt alleen een endpoint bij; de bestaande vier hebben geldige SAN's en hoeven
+niet opnieuw uitgegeven. `-f` zou de per-peer internal-CA en alle bestaande group-/internal-leafs
+her-genereren met verse sleutels, waardoor de cert-attachments van álle vijf componenten opnieuw
+handmatig in de ZAD-UI geüpload moeten worden — onnodige schade voor het toevoegen van één
+endpoint. Een kale `./issue.sh` geeft precies de ontbrekende `inway`-certs uit en laat de rest met
+rust (zie `pki/issue.sh`: bestaande `cert.pem`/`key.pem` worden zonder `-f` overgeslagen).
 
 Additief — bestaande certs blijven geldig. `zad-bundle.sh` pikt het nieuwe endpoint op via de
 bestaande pad-patronen; controleer dat `inway` in de bundle-output verschijnt.

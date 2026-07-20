@@ -98,6 +98,17 @@ aan.
 Announce-only: er is (nog) geen dienst-publicatie of discovery-smoke — de inway draait wel, maar
 er is nog geen `CreateService` gedaan, dus er valt nog niets te discoveren of aan te roepen.
 
+**Inway-boot handmatig controleren.** `run-smokes.sh` test alleen de announce; een crash-loopende
+inway wordt daardoor niet gesignaleerd. Dat is precies hoe het geaccepteerde `:9444`-risico zich
+zou manifesteren: de inway gebruikt `MANAGER_INTERNAL_UNAUTHENTICATED_ADDRESS` (`:9444`), en als
+`fsc-inway serve` v1.43.7 tóch de authenticated `:9443` blijkt te eisen, faalt de boot daar
+zichtbaar. Controleer dus na `docker compose up -d`:
+
+```text
+docker compose -f deploy/local/docker-compose.yaml ps inway-uitvraag-org      # verwacht: running, niet restarting
+docker compose -f deploy/local/docker-compose.yaml logs inway-uitvraag-org | tail -30
+```
+
 ## Troubleshooting
 
 - **Container kan cert niet vinden** → controleer dat `pki/out/uitvraag-org/<endpoint>/` en

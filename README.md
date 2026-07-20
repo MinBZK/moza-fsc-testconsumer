@@ -5,8 +5,8 @@ FSC-federatie van [`moza-fsc-testnet`](https://github.com/MinBZK/moza-fsc-testne
 directory + group-CA) via een lokale **outway** naar de dienst `berichtenmagazijn` bij magazijn-a.
 Sinds de inway-uitbreiding is de peer **bidirectioneel**: naast de outway (afname) draait er nu ook
 een **inway** (aanbod). De peer bestaat uit de OpenFSC-componenten
-**manager + outway + inway + controller + txlog** met een eigen managed Postgres, co-located met de
-achterliggende uitvraag-app.
+**manager + outway + inway + controller + txlog** met een eigen self-hosted Postgres, co-located met
+de achterliggende uitvraag-app.
 
 Gemodelleerd naar de provider-peer in
 [`moza-fsc-org-a`](https://github.com/MinBZK/moza-fsc-org-a); deze repo bevat uitsluitend FSC-infra

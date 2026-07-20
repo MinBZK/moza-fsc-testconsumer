@@ -20,7 +20,7 @@ zich als afnemer op de federatie aansluit, zodat het uitvraag-systeem (`berichte
 lokale **outway** de dienst `berichtenmagazijn` bij magazijn-a aanroept. Sinds de inway-uitbreiding
 (2026-07-20) is de peer **bidirectioneel**: naast de outway (afname) draait er nu ook een **inway**
 (aanbod). De peer bestaat uit de OpenFSC-componenten **manager + outway + inway + controller +
-txlog** met een eigen managed Postgres, co-located met de achterliggende uitvraag-app.
+txlog** met een eigen self-hosted Postgres, co-located met de achterliggende uitvraag-app.
 
 Gemodelleerd naar de provider-peer in `moza-fsc-org-a` (die op repo A's `example-provider` is
 gemodelleerd); deze repo bevat **uitsluitend FSC-infra** (PKI + deploy), niet de uitvraag-applicatie.
@@ -92,9 +92,9 @@ en bereikt de outway intra-project.
 
 - **outway én inway.** De peer was aanvankelijk consumer-only (alleen egress). Sinds de
   inway-uitbreiding (2026-07-20) is hij bidirectioneel: `uvrout` neemt af, `uvrin` biedt aan.
-  Beide registreren zich bij de controller; de inway heeft daarnaast een inbound SNI-route en
-  een GROUP-cert. Verschil met magazijn-a blijft: er is nog géén gepubliceerde dienst
-  (`CreateService` volgt zodra de upstream bekend is).
+  Beide registreren zich bij de controller en hebben elk een GROUP-cert; alleen de inway heeft
+  daarnaast een inbound SNI-route. Verschil met magazijn-a blijft: er is nog géén gepubliceerde
+  dienst (`CreateService` volgt zodra de upstream bekend is).
 - **manager zonder `AUTO_SIGN_GRANTS`.** Er is nog géén gepubliceerde dienst (zie boven); er is dus
   niets auto te signen. Auto-sign van servicePublication is een directory-eigenschap.
 - **controller in beheer-rol.** Aan de provider-kant (magazijn-a) maakt de controller de dienst aan
@@ -179,7 +179,7 @@ Deze punten gelden 1:1 (zelfde v2-API, zelfde OpenFSC-images):
   intermediate. `TLS_GROUP_ROOT_CERT` = group-root; internal-`TLS_ROOT_CERT` = internal-CA-root.
 - **Multi-poort-fix** — interne FSC-edges lopen over de cluster-Service-DNS `<deployment>-<comp>:<poort>`
   (9443/9444, txlog 8443), niet over de `:443`-ingress; de internal-certs dragen die Service-DNS als
-  SAN. Alleen de externe mesh (manager `SELF_ADDRESS`) loopt op `:443` (SNI-passthrough).
+  SAN. Alleen de externe mesh (manager én inway `SELF_ADDRESS`) loopt op `:443` (SNI-passthrough).
 
 ## Open punten (genoteerd, niet-blokkerend)
 
@@ -192,3 +192,8 @@ Deze punten gelden 1:1 (zelfde v2-API, zelfde OpenFSC-images):
 - **outway-env-namen** — verifiëren tegen de `federatedserviceconnectivity/outway`-image bij de
   eerste host-run (`outway serve --help` / OpenFSC `helm/charts`-outway-values); cert-paden en
   hostnamen liggen vast.
+- **inway-env-namen** — verifiëren tegen de `federatedserviceconnectivity/inway`-image bij de
+  eerste host-run (`fsc-inway serve --help` / OpenFSC `helm/charts`-inway-values), met name
+  `MANAGER_INTERNAL_UNAUTHENTICATED_ADDRESS` (`:9444`) — dat is het geaccepteerde risico: als
+  v1.43.7 tóch de authenticated `:9443` blijkt te eisen, faalt de boot zichtbaar (zie
+  `deploy/local/README.md` voor de operator-check).

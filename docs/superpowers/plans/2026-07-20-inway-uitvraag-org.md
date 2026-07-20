@@ -95,7 +95,11 @@ De kale peer-FQDN `uitvraag-org.fsc-test.local` hoort er **niet** in te staan �
 
 - [ ] **Step 3: Geef de certs uit en verifieer beide ketens**
 
-Run: `cd pki && ./issue.sh -f && ./gen-crl.sh && ./verify.sh`
+Run: `cd pki && ./issue.sh && ./gen-crl.sh && ./verify.sh`
+
+Geen `-f`: er komt alleen een endpoint bij, de bestaande vier certs blijven geldig en hoeven niet
+her-uitgegeven. `-f` zou de per-peer internal-CA en alle bestaande leafs forceren, met als gevolg
+dat alle cert-attachments opnieuw in de ZAD-UI geüpload moeten worden — onnodig voor deze stap.
 
 Expected: `verify.sh` eindigt met OK; de uitvoer noemt nu ook het `inway`-endpoint. Beide ketens
 valideren: GROUP tegen `ca/root.pem`, INTERNAL tegen `internal/uitvraag-org/ca/root.pem`.
