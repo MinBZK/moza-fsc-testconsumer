@@ -14,11 +14,12 @@
 group-config/CA en een neutrale `example-consumer`-peer als kopieer-template. `moza-fsc-org-a`
 (repo provider) zet de **aanbiedende** kant neer: magazijn-a publiceert `berichtenmagazijn`.
 
-Deze repo zet de **afnemende** kant neer: een **consumer-peer** (`uitvraag-org`) die zich als
-afnemer op de federatie aansluit, zodat het uitvraag-systeem (`berichtenuitvraag`) straks via een
-lokale **outway** de dienst `berichtenmagazijn` bij magazijn-a aanroept. De peer bestaat uit de
-standaard OpenFSC-componenten **manager + outway + controller + txlog** met een eigen managed
-Postgres, co-located met de achterliggende uitvraag-app.
+Deze repo zet oorspronkelijk de **afnemende** kant neer: een **consumer-peer** (`uitvraag-org`) die
+zich als afnemer op de federatie aansluit, zodat het uitvraag-systeem (`berichtenuitvraag`) via een
+lokale **outway** de dienst `berichtenmagazijn` bij magazijn-a aanroept. Sinds de inway-uitbreiding
+(2026-07-20) is de peer **bidirectioneel**: naast de outway (afname) draait er nu ook een **inway**
+(aanbod). De peer bestaat uit de OpenFSC-componenten **manager + outway + inway + controller +
+txlog** met een eigen managed Postgres, co-located met de achterliggende uitvraag-app.
 
 Gemodelleerd naar de provider-peer in `moza-fsc-org-a` (die op repo A's `example-provider` is
 gemodelleerd); deze repo bevat **uitsluitend FSC-infra** (PKI + deploy), niet de uitvraag-applicatie.
@@ -34,10 +35,10 @@ gemodelleerd); deze repo bevat **uitsluitend FSC-infra** (PKI + deploy), niet de
 | Peer-OIN = Peer ID (`subject.serialNumber`) | `00000000000000000020` | gereserveerde test-consumer-OIN, repo A (`example-consumer`) |
 | Group ID | `moza-fbs-test` | repo A directory-deploy |
 | Directory-OIN | `00000000000000000010` | repo A directory-deploy |
-| Endpoints (PKI) | `manager`, `outway`, `controller`, `txlog` | dit ontwerp |
-| FSC-images (pin) | `v1.43.7` (manager/outway/controller/txlog/directory-ui) | repo A |
+| Endpoints (PKI) | `manager`, `outway`, `inway`, `controller`, `txlog` | dit ontwerp |
+| FSC-images (pin) | `v1.43.7` (manager/outway/inway/controller/txlog/directory-ui) | repo A |
 | ZAD-project / deployment | `mpfuc-84g` / `test` | dit ontwerp |
-| ZAD-component-prefix | `uvr*` (`uvrmgr`/`uvrout`/`uvrctl`/`uvrtxlog`/`uvrpg`) | dit ontwerp |
+| ZAD-component-prefix | `uvr*` (`uvrmgr`/`uvrout`/`uvrin`/`uvrctl`/`uvrtxlog`/`uvrpg`) | dit ontwerp |
 
 **Peer ID = geldige OIN** (uit cert `subject.serialNumber`), peer-naam uit `subject.organization`.
 De OIN staat in **lockstep** met elke `pki/peers/uitvraag-org/<endpoint>/csr.json`.
@@ -46,12 +47,12 @@ De OIN staat in **lockstep** met elke `pki/peers/uitvraag-org/<endpoint>/csr.jso
 
 - **GEEN fork** van de FSC-software. Dit is een **deploy- en configuratie-repo** die
   [OpenFSC](https://gitlab.com/rinis-oss/fsc/open-fsc) (EUPL-1.2, RINIS) consumeert via haar
-  container-images (`manager`, `outway`, `controller`, `txlog-api`, gepind op `v1.43.7`).
+  container-images (`manager`, `outway`, `inway`, `controller`, `txlog-api`, gepind op `v1.43.7`).
 - **WEL**: onze test-PKI, peer-configuratie, ZAD-deploy (`upsert-peer.sh` + workflow), runbooks.
 - **Migratie-wrappers:** ZAD ondersteunt geen init-containers/args → de migratie zit in het image
   zelf. manager/controller/txlog draaien elk een wrapper-image
   `ghcr.io/minbzk/moza-fsc-testnet/{manager,controller,txlog}-migrate` (`migrate up && serve`); de
-  outway heeft geen DB en gebruikt het stock-image.
+  outway en de inway hebben geen DB en gebruiken het stock-image.
 
 ## Scope
 
@@ -101,18 +102,18 @@ en bereikt de outway intra-project.
 
 ### Certificaat-topologie (per endpoint, uit repo A)
 
-Elk endpoint (`manager`/`outway`/`controller`/`txlog`) krijgt twee ketens:
+Elk endpoint (`manager`/`outway`/`inway`/`controller`/`txlog`) krijgt twee ketens:
 
 - **GROUP** (extern, door de group-intermediate getekend) → `TLS_GROUP_CERT/KEY` (+ hergebruikt
   voor `TLS_GROUP_TOKEN_*` en `TLS_GROUP_CONTRACT_*`). De OIN staat 1:1 in `serialnumber` van de
   `csr.json`. De controller heeft géén group-cert nodig (spreekt geen mesh, alleen de eigen manager
   op de internal-PKI) — parallel aan de provider-controller.
 - **INTERNAL** (per-peer self-signed CA) → `TLS_CERT/KEY` (+ `TLS_INTERNAL_UNAUTHENTICATED_*`),
-  voor de mTLS tussen manager ↔ controller ↔ outway ↔ txlog.
+  voor de mTLS tussen manager ↔ controller ↔ outway ↔ inway ↔ txlog.
 
 De PKI-scripts (`gen-csr.sh`/`issue.sh`/`verify.sh`/`gen-crl.sh`/`zad-bundle.sh`) zijn 1:1 uit
 `moza-fsc-org-a`/repo A; alleen de peer-identiteit (naam `uitvraag-org`, OIN, endpoint-lijst
-`manager/outway/controller/txlog`) in `gen-csr.sh` wijkt af.
+`manager/outway/inway/controller/txlog`) in `gen-csr.sh` wijkt af.
 
 ### Onboarding-flow
 
@@ -121,6 +122,7 @@ uitvraag-org                                 centrale kern (directory)
   manager ───announce────────────────────►  directory-manager (peers.peers, :443)
   controller ──(beheer-UI: contract aanvragen/inspecteren)──► eigen manager (:9443)
   outway ──register + config──────────────►  eigen controller (:9443) + manager (:9443)
+  inway ──register + config───────────────►  eigen controller (:9443) + manager (:9444)
 ```
 
 1. **Cert** — group-cert voor OIN `00000000000000000020` (lokaal `issue.sh`).
@@ -152,7 +154,7 @@ discoveren is betekenisloos. Discover bewijzen we tegen de échte directory op Z
 
 `upsert-peer.sh` (`validate`/`plan`/`apply`) tegen de ZAD v2 Operations Manager API, in een **eigen
 ZAD-project**. Componenten `uvrpg` (self-hosted Postgres + init-schema's), `uvrmgr`, `uvrctl`,
-`uvrout`, `uvrtxlog`. Cert-attachments + "Publicatie op het web" (passthrough) zijn UI-only (zie
+`uvrout`, `uvrin`, `uvrtxlog`. Cert-attachments + "Publicatie op het web" (passthrough) zijn UI-only (zie
 `deploy/zad/cert-manifest.md`). CI (`zad-deploy-peer.yml`): PR → alleen `plan` (geen secrets),
 `main` → `apply`.
 
