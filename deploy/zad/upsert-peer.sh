@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Zet de consumer-peer uitvraag-org (manager+controller+outway+txlog) op ZAD via de v2 Operations
+# Zet de peer uitvraag-org (postgres+manager+controller+outway+inway+txlog) op ZAD via de v2 Operations
 # Manager API in een EIGEN ZAD-project (mpfuc-84g, deployment `test`). Gebaseerd op
 # moza-fsc-org-a's deploy/zad/upsert-peer.sh (de aanbiedende provider-peer-analoog), zelf gemodelleerd naar
 # repo A's deploy/zad/upsert-directory.sh (MinBZK/moza-fsc-testnet) — zelfde validate/plan/apply-
@@ -10,9 +10,9 @@
 #
 # Model: de peer draait in de deployment `test` van het eigen project. Doordat het een eigen project
 # is, is er geen app-deployment om te overschrijven (project-isolatie i.p.v. deployment-isolatie). De
-# consumer publiceert geen dienst en heeft geen upstream-app: geen ingress-component vóór een
-# aangeboden dienst, geen CreateService, geen upstream-URL-logica. De outway leest z'n
-# contract-/service-config van de eigen manager.
+# peer is bidirectioneel: de outway neemt af, de inway biedt aan. Er is nog géén gepubliceerde
+# dienst — geen CreateService, geen upstream-URL-logica — omdat de upstream nog niet bekend is;
+# de inway staat er technisch wel klaar voor.
 # `:upsert-deployment` zet per component de {reference,image} en updatet het deployment;
 # POST /components verrijkt elke component met env_vars/ports/services/aliases.
 #
@@ -190,10 +190,10 @@ UVRCTL_ENV="$(printf '%s\n' \
   "MANAGER_ADDRESS_INTERNAL=https://${UVRMGR_SVC}:9443")"
 UVRCTL_ALIASES=""
 
-# outway (egress-proxy): leest z'n contract-/service-config van de eigen manager op de
-# internal-unauthenticated-poort (:9444) — geen controller-registratie, geen upstream, geen
-# CreateService (de consumer publiceert geen dienst). Neemt de rol over van de ingress-component
-# aan de aanbiedende kant (provider-peer).
+# outway (egress-proxy): registreert zich bij de controller en praat met de manager op de
+# AUTHENTICATED interne poort (:9443) — `fsc-outway serve` eist beide (manager-internal-address +
+# controller-registration-api-address), zie e7300c5. Bewust anders dan de inway hieronder, die de
+# internal-UNAUTHENTICATED poort (:9444) gebruikt. Geen upstream: de outway is de afnemende kant.
 UVROUT_ENV="$(printf '%s\n' \
   "LOG_TYPE=live" "LOG_LEVEL=info" \
   "NAME=uitvraag-org-outway" \
