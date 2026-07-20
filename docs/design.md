@@ -192,8 +192,7 @@ Deze punten gelden 1:1 (zelfde v2-API, zelfde OpenFSC-images):
 - **outway-env-namen** — verifiëren tegen de `federatedserviceconnectivity/outway`-image bij de
   eerste host-run (`outway serve --help` / OpenFSC `helm/charts`-outway-values); cert-paden en
   hostnamen liggen vast.
-- **inway-env-namen** — verifiëren tegen de `federatedserviceconnectivity/inway`-image bij de
-  eerste host-run (`fsc-inway serve --help` / OpenFSC `helm/charts`-inway-values), met name
-  `MANAGER_INTERNAL_UNAUTHENTICATED_ADDRESS` (`:9444`) — dat is het geaccepteerde risico: als
-  v1.43.7 tóch de authenticated `:9443` blijkt te eisen, faalt de boot zichtbaar (zie
-  `deploy/local/README.md` voor de operator-check).
+- ~~**inway-env-namen**~~ — **afgehandeld 2026-07-20**: de lokale host-run bevestigt dat
+  `fsc-inway serve` v1.43.7 gezond boot met `MANAGER_INTERNAL_UNAUTHENTICATED_ADDRESS` (`:9444`).
+  Het geaccepteerde risico dat v1.43.7 tóch de authenticated `:9443` zou eisen, is daarmee van
+  tafel. De operator-check in `deploy/local/README.md` blijft nuttig als regressiesignaal.

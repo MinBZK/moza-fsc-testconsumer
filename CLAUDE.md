@@ -99,7 +99,8 @@ De ZAD Operations Manager v2-API heeft niet-triviaal gedrag. Deze punten kostten
 - **inway vs outway: verschillende manager-poort.** De outway praat met de manager op de
   authenticated `:9443` (`MANAGER_INTERNAL_ADDRESS`, sinds `e7300c5`); de inway op de
   internal-unauthenticated `:9444` (`MANAGER_INTERNAL_UNAUTHENTICATED_ADDRESS`), conform
-  magazijn-a's bewezen provider-config. Niet uniformeren zonder te testen.
+  magazijn-a's bewezen provider-config. **Empirisch bevestigd op 2026-07-20**: `fsc-inway serve`
+  v1.43.7 boot lokaal gezond met de unauthenticated variant. Niet uniformeren.
 
 ## Repo-structuur
 
