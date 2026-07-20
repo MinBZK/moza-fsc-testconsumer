@@ -1,7 +1,8 @@
-# FSC PKI-scaffolding — consumer-peer `uitvraag-org`
+# FSC PKI-scaffolding — peer `uitvraag-org`
 
-Test-PKI voor de FSC consumer-peer die straks via een lokale outway de dienst `berichtenmagazijn`
-bij de provider-peer (`moza-fsc-org-a`) aanroept.
+Test-PKI voor de FSC-peer die via een lokale outway de dienst `berichtenmagazijn` bij de
+provider-peer (`moza-fsc-org-a`) aanroept, en sinds de inway-uitbreiding (2026-07-20) ook zelf
+certs draagt voor een aanbiedend endpoint (inway) — zie hieronder.
 Scripts en CA-configs zijn 1:1 overgenomen uit `MinBZK/moza-fsc-testnet` (`pki/`), zodat deze
 peer aansluit op dezelfde testnet-conventies als de andere deelnemers (group `moza-fbs-test`,
 directory-OIN `00000000000000000010`).

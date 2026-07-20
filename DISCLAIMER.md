@@ -1,9 +1,10 @@
 # Disclaimer
 
-Deze repository is een **experimentele Proof of Concept (PoC)**: de **FSC consumer-peer**
-(Federated Service Connectivity) van de uitvraag-organisatie (`uitvraag-org`), die als afnemer
-aansluit op de gedeelde FSC-testomgeving van
+Deze repository is een **experimentele Proof of Concept (PoC)**: de **FSC-peer**
+(Federated Service Connectivity) van de uitvraag-organisatie (`uitvraag-org`), die aansluit op de
+gedeelde FSC-testomgeving van
 [moza-fsc-testnet](https://github.com/MinBZK/moza-fsc-testnet) voor MijnOverheid Zakelijk (MOZa).
+Oorspronkelijk uitsluitend als afnemer; sinds de inway-uitbreiding (2026-07-20) bidirectioneel.
 De inhoud (configuratie, scripts en documentatie) is
 **grotendeels gegenereerd met generatieve AI** (Claude Code, Anthropic). Alle wijzigingen
 worden **menselijk gereviewd** via de pull-request-workflow voordat die in de hoofdbranch
@@ -19,8 +20,9 @@ geen rechten worden ontleend.
 
 Bijdragen die met behulp van generatieve AI tot stand zijn gekomen, zijn gemarkeerd via de
 commit-trailer `Co-Authored-By`. Deze repo bevat geen applicatiecode (alleen
-configuratie/scripts/docs voor een OpenFSC-consumer-peer die via een outway de dienst
-`berichtenmagazijn` bij magazijn-a aanroept); alles wat hier staat is volledig door ontwikkelaars
+configuratie/scripts/docs voor een OpenFSC-peer die via een outway de dienst
+`berichtenmagazijn` bij magazijn-a aanroept, en sinds de inway-uitbreiding ook zelf technisch
+klaarstaat om een dienst aan te bieden); alles wat hier staat is volledig door ontwikkelaars
 beoordeeld via de pull-request-workflow voordat het wordt gemerged.
 
 ## Gebruik van generatieve AI

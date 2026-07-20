@@ -2,11 +2,13 @@
 
 ## Project
 
-**uitvraag-org-fsc-peer** — de **FSC consumer-peer** van de uitvraag-organisatie, die als
-**afnemer** aansluit op de gedeelde FSC-testfederatie van
-[MinBZK/moza-fsc-testnet](https://github.com/MinBZK/moza-fsc-testnet) (repo A — directory + group-CA)
-en straks via een lokale outway de dienst `berichtenmagazijn` bij
-[moza-fsc-org-a](https://github.com/MinBZK/moza-fsc-org-a) (de provider-peer) aanroept.
+**uitvraag-org-fsc-peer** — de **FSC-peer** van de uitvraag-organisatie, die aansluit op de
+gedeelde FSC-testfederatie van
+[MinBZK/moza-fsc-testnet](https://github.com/MinBZK/moza-fsc-testnet) (repo A — directory + group-CA).
+Oorspronkelijk uitsluitend **afnemer** (roept via een lokale outway de dienst `berichtenmagazijn`
+bij [moza-fsc-org-a](https://github.com/MinBZK/moza-fsc-org-a) (de provider-peer) aan); sinds de
+inway-uitbreiding (2026-07-20) is de peer **bidirectioneel** — hij neemt af én biedt aan, al is er
+nog geen gepubliceerde dienst.
 
 - **Gerelateerd:** [moza-fsc-testnet](https://github.com/MinBZK/moza-fsc-testnet) (infra + directory),
   [moza-fsc-org-a](https://github.com/MinBZK/moza-fsc-org-a) (de provider-peer),

@@ -1,12 +1,13 @@
 **Status:** Concept
 
-# Ontwerp — FSC consumer-peer `uitvraag-org` aansluiten op de FSC-federatie (#781)
+# Ontwerp — FSC peer `uitvraag-org` aansluiten op de FSC-federatie (#781)
 
-> Consumer-tegenhanger van de provider-peer in
-> [`moza-fsc-org-a`](https://github.com/MinBZK/moza-fsc-org-a) (#780). Sluit aan op dezelfde
-> testfederatie van [`moza-fsc-testnet`](https://github.com/MinBZK/moza-fsc-testnet) (repo A —
-> directory + group-CA). Verwant: epic #737. Vervolg (buiten dit ontwerp): het omleiden van
-> `berichtenuitvraag` via de outway, het afnemer-contract en het echte data-pad + txlog-hardening.
+> Oorspronkelijk de consumer-tegenhanger van de provider-peer in
+> [`moza-fsc-org-a`](https://github.com/MinBZK/moza-fsc-org-a) (#780), sinds de inway-uitbreiding
+> (2026-07-20) bidirectioneel. Sluit aan op dezelfde testfederatie van
+> [`moza-fsc-testnet`](https://github.com/MinBZK/moza-fsc-testnet) (repo A — directory + group-CA).
+> Verwant: epic #737. Vervolg (buiten dit ontwerp): het omleiden van `berichtenuitvraag` via de
+> outway, het afnemer-contract en het echte data-pad + txlog-hardening.
 
 ## Aanleiding
 
@@ -14,7 +15,7 @@
 group-config/CA en een neutrale `example-consumer`-peer als kopieer-template. `moza-fsc-org-a`
 (repo provider) zet de **aanbiedende** kant neer: magazijn-a publiceert `berichtenmagazijn`.
 
-Deze repo zet oorspronkelijk de **afnemende** kant neer: een **consumer-peer** (`uitvraag-org`) die
+Deze repo zet oorspronkelijk de **afnemende** kant neer: een **peer** (`uitvraag-org`) die
 zich als afnemer op de federatie aansluit, zodat het uitvraag-systeem (`berichtenuitvraag`) via een
 lokale **outway** de dienst `berichtenmagazijn` bij magazijn-a aanroept. Sinds de inway-uitbreiding
 (2026-07-20) is de peer **bidirectioneel**: naast de outway (afname) draait er nu ook een **inway**
@@ -56,7 +57,7 @@ De OIN staat in **lockstep** met elke `pki/peers/uitvraag-org/<endpoint>/csr.jso
 
 ## Scope
 
-**In scope:** de consumer-peer voor `uitvraag-org` (OIN `00000000000000000020`), volledige pariteit
+**In scope:** de peer voor `uitvraag-org` (OIN `00000000000000000020`), volledige pariteit
 met de provider-repo: PKI-laag, lokale compose-proof (announce), ZAD-deploy + cert-runbooks,
 CI-workflow, docs.
 
@@ -73,10 +74,10 @@ CI-workflow, docs.
 ## Architectuur
 
 Gespiegeld op de provider-peer in `moza-fsc-org-a`. Per peer een eigen set FSC-componenten; de
-consumer-peer draait in een **eigen ZAD-project** (project-isolatie). De uitvraag-app draait apart
+peer draait in een **eigen ZAD-project** (project-isolatie). De uitvraag-app draait apart
 en bereikt de outway intra-project.
 
-### Componenten van de consumer-peer
+### Componenten van de peer
 
 | Component | ZAD-ref | Rol |
 |-----------|---------|-----|
@@ -94,11 +95,12 @@ en bereikt de outway intra-project.
   Beide registreren zich bij de controller; de inway heeft daarnaast een inbound SNI-route en
   een GROUP-cert. Verschil met magazijn-a blijft: er is nog géén gepubliceerde dienst
   (`CreateService` volgt zodra de upstream bekend is).
-- **manager zonder `AUTO_SIGN_GRANTS`.** De consumer publiceert geen dienst; er is niets auto te
-  signen. Auto-sign van servicePublication is een directory-eigenschap.
-- **controller in beheer-rol.** Aan de provider-kant maakt de controller de dienst aan en registreert
-  hij de inway; aan de consumer-kant is hij puur een beheer-UI bovenop de manager-API (afnemer-
-  contracten aanvragen/inspecteren). Niet vereist voor het data-pad, wél gewenst als beheerscherm.
+- **manager zonder `AUTO_SIGN_GRANTS`.** Er is nog géén gepubliceerde dienst (zie boven); er is dus
+  niets auto te signen. Auto-sign van servicePublication is een directory-eigenschap.
+- **controller in beheer-rol.** Aan de provider-kant (magazijn-a) maakt de controller de dienst aan
+  en registreert hij de inway; bij deze peer is hij vooralsnog puur een beheer-UI bovenop de
+  manager-API (afnemer-contracten aanvragen/inspecteren) — dat verandert zodra de eigen dienst
+  gepubliceerd wordt. Niet vereist voor het data-pad, wél gewenst als beheerscherm.
 
 ### Certificaat-topologie (per endpoint, uit repo A)
 

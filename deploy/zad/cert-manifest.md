@@ -1,4 +1,4 @@
-# Cert-attachments op ZAD — consumer-peer uitvraag-org
+# Cert-attachments op ZAD — peer uitvraag-org
 
 > Draaiboek voor de mens: de cert-attachments mounten. Uit te voeren ná `pki/issue.sh` (zie
 > `pki/README.md`) en rond `upsert-peer.sh apply`.

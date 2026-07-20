@@ -1,4 +1,4 @@
-# Lokale FSC-harness — directory + consumer-peer uitvraag-org
+# Lokale FSC-harness — directory + peer uitvraag-org
 
 Runnable shift-left van de ZAD-deploy: een lokale FSC-directory + de peer `uitvraag-org`
 (manager + outway + inway + controller + txlog + eigen DB's) + een SNI-router op `:443`. Bewijst dat
