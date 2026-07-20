@@ -28,7 +28,7 @@ directory-OIN `00000000000000000010`).
 
 ### GROUP versus INTERNAL keten
 
-Elk endpoint (`manager`, `outway`, `controller`, `txlog`) krijgt twee certs uit twee losse ketens,
+Elk endpoint (`manager`, `outway`, `inway`, `controller`, `txlog`) krijgt twee certs uit twee losse ketens,
 zodat de manager zowel extern (mesh, group-trust) als intern (component-tot-component) een
 geldig certificaat heeft:
 
@@ -41,7 +41,7 @@ geldig certificaat heeft:
 
 - Peer-OIN = Peer ID = `serialnumber` in elke `csr.json`: `00000000000000000020`.
 - `names[].O`: `uitvraag-org`.
-- Endpoints: `manager`, `outway`, `controller`, `txlog`. Elke csr draagt naast de lokale naam
+- Endpoints: `manager`, `outway`, `inway`, `controller`, `txlog`. Elke csr draagt naast de lokale naam
   (`<endpoint>.uitvraag-org.fsc-test.local`) de ZAD-SAN's: de externe mesh-host
   (`<short>-<deployment>-<project>.<base-domain>`) en de cluster-interne Service-DNS
   (`<deployment>-<short>` + `<deployment>-<short>.rig-prd-<project>.svc.cluster.local`). Die worden

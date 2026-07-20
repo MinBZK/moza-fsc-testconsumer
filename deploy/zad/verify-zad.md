@@ -7,13 +7,24 @@
 
 1. `upsert-peer.sh apply` gedraaid → deployment + componenten bestaan in het eigen ZAD-project,
    elk met zijn `ports`-array (uvrmgr `8443,9443,9444`; uvrctl `8080,9443,9444`; uvrout/uvrtxlog
-   `8443`) zodat de interne mTLS-poorten een cluster-Service (`test-<comp>:<poort>`) krijgen.
+   `8443`; uvrin `8443`) zodat de interne mTLS-poorten een cluster-Service (`test-<comp>:<poort>`)
+   krijgen.
 2. Cert-attachments gemount (zie `cert-manifest.md`) + "Publicatie op het web"
-   (passthrough-TLS, modus 2) op uvrmgr ingesteld in de ZAD-UI (de outway uvrout is
-   egress-only — geen web-publicatie/inbound ingress).
+   (passthrough-TLS, modus 2) op uvrmgr **en** uvrin ingesteld in de ZAD-UI (de outway uvrout is
+   egress-only — geen web-publicatie/inbound ingress; de inway uvrin is mesh-ingress en heeft de
+   web-publicatie juist wél nodig, net als uvrmgr).
 3. Componenten herstart en boot-logs foutloos (zie `cert-manifest.md`, laatste sectie) — in het
    bijzonder GEEN `x509: certificate signed by unknown authority` meer op de controller: die
    bereikt de manager nu intern op `test-uvrmgr:9443` (interne-PKI) i.p.v. de `:443`-group-ingress.
+
+## (a0) uvrin (inway) — draait en registreert zich
+
+- **Pod draait** — geen restart-loop op de uvrin-component in de ZAD-UI.
+- **Geen cert-ketenfout in de boot-log** — met name geen `certificate signed by unknown authority`
+  (verkeerde group/internal-cert verwisseld, zie `cert-manifest.md`) en geen handshake-fout tegen
+  `test-uvrctl:9443` of `test-uvrmgr:9444`.
+- **Registratie bij uvrctl zichtbaar** — de controller-UI (of de Registration-API) toont de inway
+  als geregistreerde inway voor deze peer.
 
 ## (a) Announce — consumer-OIN vindbaar in de directory
 
@@ -38,11 +49,24 @@ data-pad (`uvrout → inway → berichtenmagazijn`) bewijs je op ZAD tegen de é
 draaiende magazijn-a-peer (`moza-fsc-org-a`). Dat vereist een geaccepteerd afnemer-contract
 (ServiceConnectionGrant) — nog niet onderdeel van dit ontwerp.
 
+### Nog niet bewijsbaar: het inbound data-pad
+
+`uvrin` draait, maar biedt nog geen dienst aan — er is geen `CreateService` gedaan. Zodra de
+upstream bekend is, komt daar bij:
+
+1. `ZAD_UITVRAAG_UPSTREAM_URL` in `upsert-peer.sh` (cross-project ingress-URL, https/:443,
+   naar analogie van org-a's `ZAD_MAGAZIJNA_UPSTREAM_URL`).
+2. Service aanmaken + publiceren via de `uvrctl` Administration-API; `CreateService` verwacht het
+   inway-ADRES (`SELF_ADDRESS`, `https://uvrin-test-mpfuc-84g.<base-domain>:443`), niet de naam.
+3. Een smoke voor het pad `externe consumer → uvrin → upstream`.
+
 ## Acceptatiecriteria — afvinklijst
 
-- [ ] Peer (echte OIN) draait op ZAD: manager + controller + outway + txlog + DB (project-isolatie)
+- [ ] Peer (echte OIN) draait op ZAD: manager + controller + outway + inway + txlog + DB
+      (project-isolatie)
 - [ ] Peer heeft een geldige group-cert (getekend onder fsc-testnet's group-CA)
 - [ ] Peer meldt zich aan bij de directory (announce)
-- [ ] Discover + contract + data-pad: vervolgwerk (zie hierboven), niet in deze afvinklijst
+- [ ] `uvrin` draait en registreert zich bij `uvrctl` (zie hierboven, punt a0)
+- [ ] Discover + contract + inbound data-pad: vervolgwerk (zie hierboven), niet in deze afvinklijst
 
 Elk vinkje vereist een mens met ZAD-toegang, gegenereerde certs en een draaiende peer.

@@ -1,9 +1,9 @@
 # Lokale FSC-harness — directory + consumer-peer uitvraag-org
 
-Runnable shift-left van de ZAD-deploy: een lokale FSC-directory + de consumer-peer `uitvraag-org`
-(manager + outway + controller + txlog + eigen DB's) + een SNI-router op `:443`. Bewijst dat
+Runnable shift-left van de ZAD-deploy: een lokale FSC-directory + de peer `uitvraag-org`
+(manager + outway + inway + controller + txlog + eigen DB's) + een SNI-router op `:443`. Bewijst dat
 `uitvraag-org` zich aanmeldt (announce) bij de directory. Geen aangeboden dienst, geen
-OIDC-login-voorziening — control-plane-only voor deze ene consumer-peer. Bouwt voort op `pki/`
+OIDC-login-voorziening — control-plane-only voor deze ene peer. Bouwt voort op `pki/`
 (zie dat README voor het cert-contract).
 
 > **Vereist Docker + `docker compose` (v2) en gegenereerde certs** (`pki/issue.sh`, vereist
@@ -56,8 +56,8 @@ docker compose -f deploy/local/docker-compose.yaml down -v
 ```
 
 > **Hosts-bestand niet nodig.** De SNI-hostnames (`directory.fsc-test.local`,
-> `uitvraag-org.fsc-test.local`) resolven *binnen* het docker-netwerk via de router-aliases.
-> De UIs benader je via `localhost`-poorten hieronder.
+> `uitvraag-org.fsc-test.local`, `inway.uitvraag-org.fsc-test.local`) resolven *binnen* het
+> docker-netwerk via de router-aliases. De UIs benader je via `localhost`-poorten hieronder.
 
 ## Wat er opkomt
 
@@ -74,13 +74,19 @@ docker compose -f deploy/local/docker-compose.yaml down -v
 - **migrate-txlog-uitvraag-org**, **txlog-uitvraag-org** — transactielog-API van de peer
   (internal-PKI-mTLS).
 - **outway-uitvraag-org** — client-egress: leest z'n contract-/service-config van de eigen
-  manager (internal-unauthenticated) en logt uitgaande transacties bij txlog. Geen inbound
+  manager (internal-authenticated `:9443`) en logt uitgaande transacties bij txlog. Geen inbound
   SNI-route (geen aangeboden dienst).
+- **inway-uitvraag-org** — ingress-proxy: registreert zich bij de eigen controller (`:9443`) en
+  leest z'n config bij de eigen manager op de internal-**unauthenticated** poort (`:9444`) —
+  bewust anders dan de outway (zie `CLAUDE.md`, "inway vs outway: verschillende manager-poort").
+  Eigen SNI-route op de router (`inway.uitvraag-org.fsc-test.local`). Biedt (nog) geen dienst aan:
+  er is geen `CreateService` gedaan.
 - **toolbox** — curl-client op het netwerk voor mTLS-onboarding-calls (niet gebruikt door deze
   announce-only-proof, maar beschikbaar voor gerichte diagnose).
 
 Geen aangeboden-dienst-onboarding, geen OIDC-login-voorziening — beide zijn buiten scope voor
-deze consumer-only announce-proof.
+deze announce-proof. De inway draait wel (mesh-ingress + registratie), maar biedt nog geen dienst
+aan.
 
 ## Smoke
 
@@ -89,8 +95,8 @@ deze consumer-only announce-proof.
 | `smoke-announce.sh` | `uitvraag-org` (OIN `00000000000000000020`) staat in `peers.peers` met een `manager_address` op `:443`. |
 | `run-smokes.sh` | Draait `smoke-announce.sh`. |
 
-Announce-only: er is (nog) geen dienst-publicatie of discovery-smoke voor deze consumer-peer —
-die horen bij een aangeboden dienst, niet bij een afnemende peer.
+Announce-only: er is (nog) geen dienst-publicatie of discovery-smoke — de inway draait wel, maar
+er is nog geen `CreateService` gedaan, dus er valt nog niets te discoveren of aan te roepen.
 
 ## Troubleshooting
 
@@ -113,7 +119,7 @@ die horen bij een aangeboden dienst, niet bij een afnemende peer.
 ## Cert-contract (referentie, overgenomen uit `pki/README.md`)
 
 De harness mount `pki/` read-only op `/pki`. Per endpoint (`manager`, `controller`, `outway`,
-`txlog`) twee ketens:
+`inway`, `txlog`) twee ketens:
 
 | Pad | Doel | Env |
 |-----|------|-----|

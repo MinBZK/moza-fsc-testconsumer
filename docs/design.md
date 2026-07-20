@@ -81,16 +81,18 @@ en bereikt de outway intra-project.
 |-----------|---------|-----|
 | manager | `uvrmgr` | announce bij de directory + contract-/token-uitgifte; `manager-migrate`-wrapper migreert de peer-DB bij boot. Géén `AUTO_SIGN_GRANTS` (dat is directory-only). |
 | outway | `uvrout` | egress-proxy vóór de uitvraag-app; registreert zich bij de controller (`:9443`) en praat met de manager op de authenticated interne poort (`:9443`) — `fsc-outway serve` eist beide (`manager-internal-address` + `controller-registration-api-address`). Géén inbound router-route (de outway is client, geen ingress). |
+| inway | `uvrin` | ingress-proxy vóór een aangeboden dienst; registreert zich bij de controller (`:9443`) en leest z'n config bij de manager op de internal-unauthenticated poort (`:9444`). Mesh-ingress: eigen `:443`-route (SNI-passthrough). Kent géén upstream-env — de upstream is de `endpoint_url` bij service-publicatie. |
 | controller | `uvrctl` | beheer-UI: afnemer-toegang aanvragen + contracten beheren/inspecteren (Administration/Registration-API, `AUTHN_TYPE=none`); `controller-migrate`-wrapper migreert bij boot. |
 | txlog | `uvrtxlog` | transaction-log API (internal-PKI mTLS, eigen DB). Verplicht: een niet-directory-manager faalt hard op een lege `TX_LOG_API_ADDRESS`. Manager + outway wijzen ernaar. |
 | DB | `uvrpg` (self-hosted Postgres, één DB, geïsoleerde migratie-tellers) | system-of-record manager + controller + txlog. |
 
 **Verschillen t.o.v. de provider-peer (magazijn-a):**
 
-- **outway i.p.v. inway.** De inway is een *ingress* vóór een aangeboden dienst (kent een upstream);
-  de outway is een *egress*. Beide registreren zich bij de controller (`controller-registration-api-address`)
-  en praten met de manager op de interne poort. Verschil voor de consumer: geen `upstream`, geen
-  `CreateService`, geen inbound SNI-route.
+- **outway én inway.** De peer was aanvankelijk consumer-only (alleen egress). Sinds de
+  inway-uitbreiding (2026-07-20) is hij bidirectioneel: `uvrout` neemt af, `uvrin` biedt aan.
+  Beide registreren zich bij de controller; de inway heeft daarnaast een inbound SNI-route en
+  een GROUP-cert. Verschil met magazijn-a blijft: er is nog géén gepubliceerde dienst
+  (`CreateService` volgt zodra de upstream bekend is).
 - **manager zonder `AUTO_SIGN_GRANTS`.** De consumer publiceert geen dienst; er is niets auto te
   signen. Auto-sign van servicePublication is een directory-eigenschap.
 - **controller in beheer-rol.** Aan de provider-kant maakt de controller de dienst aan en registreert
@@ -131,17 +133,17 @@ Discover (`berichtenmagazijn` vindbaar) en het contract/data-pad volgen op ZAD (
 
 ### Fase 1 — Lokale compose-proof (*announce-only*, A1)
 
-Zelfstandige harness (mirror van org-a's `deploy/local`, single-peer): directory + consumer-peer
-(manager + outway + controller + txlog + postgres) + SNI-router + directory-ui. Bewijst:
+Zelfstandige harness (mirror van org-a's `deploy/local`, single-peer): directory + peer
+(manager + outway + inway + controller + txlog + postgres) + SNI-router + directory-ui. Bewijst:
 
 - de peer **boot** (alle componenten `Up`, geen restart-loop);
 - **announce** — `smoke-announce.sh` pollt de directory-DB tot de consumer-OIN met `manager_address`
   op `:443` in `peers.peers` staat;
 - de **controller-UI** is bereikbaar (host-poort `8090`).
 
-Bewust *geen* lokale discover-smoke: een consumer-only compose heeft geen provider die
-`berichtenmagazijn` publiceert, dus lokaal discoveren is betekenisloos. Discover bewijzen we tegen
-de échte directory op ZAD (Fase 2).
+Bewust *geen* lokale discover-smoke: deze compose heeft geen provider die `berichtenmagazijn`
+publiceert (ook al draait sinds de inway-uitbreiding wél een eigen inway mee), dus lokaal
+discoveren is betekenisloos. Discover bewijzen we tegen de échte directory op ZAD (Fase 2).
 
 > **outway boot zonder contract.** In deze fase routeert de outway nog niets (geen contract). Hij
 > mag niet crash-loopen; de acceptatie asserteert dat geen component in een restart-loop zit.
