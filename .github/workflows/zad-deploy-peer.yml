@@ -95,12 +95,14 @@ jobs:
           mgr="https://uvrmgr-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
           ctl="https://uvrctl-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
           outway="https://uvrout-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
+          inway="https://uvrin-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
           txlog="https://uvrtxlog-${DEPLOYMENT}-${PROJECT}.${BASE_DOMAIN}"
           body="${marker}
           ### FSC uitvraag-org-peer (deployment \`${DEPLOYMENT}\`)
           - uvrmgr (manager): ${mgr}
           - uvrctl (controller): ${ctl}
-          - uvrout (outway): ${outway}
+          - uvrout (outway, egress): ${outway}
+          - uvrin (inway, mesh-ingress): ${inway}
           - uvrtxlog (txlog): ${txlog}
 
           Eigen \`${DEPLOYMENT}\`-deployment, los van de app-deployments \`test\`/\`pr-<n>\` (clobber-veilig).

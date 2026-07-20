@@ -85,7 +85,7 @@ en bereikt de outway intra-project.
 | outway | `uvrout` | egress-proxy vóór de uitvraag-app; registreert zich bij de controller (`:9443`) en praat met de manager op de authenticated interne poort (`:9443`) — `fsc-outway serve` eist beide (`manager-internal-address` + `controller-registration-api-address`). Géén inbound router-route (de outway is client, geen ingress). |
 | inway | `uvrin` | ingress-proxy vóór een aangeboden dienst; registreert zich bij de controller (`:9443`) en leest z'n config bij de manager op de internal-unauthenticated poort (`:9444`). Mesh-ingress: eigen `:443`-route (SNI-passthrough). Kent géén upstream-env — de upstream is de `endpoint_url` bij service-publicatie. |
 | controller | `uvrctl` | beheer-UI: afnemer-toegang aanvragen + contracten beheren/inspecteren (Administration/Registration-API, `AUTHN_TYPE=none`); `controller-migrate`-wrapper migreert bij boot. |
-| txlog | `uvrtxlog` | transaction-log API (internal-PKI mTLS, eigen DB). Verplicht: een niet-directory-manager faalt hard op een lege `TX_LOG_API_ADDRESS`. Manager + outway wijzen ernaar. |
+| txlog | `uvrtxlog` | transaction-log API (internal-PKI mTLS, eigen DB). Verplicht: een niet-directory-manager faalt hard op een lege `TX_LOG_API_ADDRESS`. Manager, outway én inway wijzen ernaar. |
 | DB | `uvrpg` (self-hosted Postgres, één DB, geïsoleerde migratie-tellers) | system-of-record manager + controller + txlog. |
 
 **Verschillen t.o.v. de provider-peer (magazijn-a):**
